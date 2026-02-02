@@ -1,0 +1,301 @@
+import { useState } from 'react';
+import { Mail, Lock, ArrowRight, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { db } from './lib/db';
+import { hashPassword } from './lib/auth';
+
+interface LoginProps {
+    onLogin: (isAdmin: boolean, studentEmail: string) => void;
+}
+
+export function Login({ onLogin }: LoginProps) {
+    const [isLogin, setIsLogin] = useState(true);
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setMessage(null);
+
+        try {
+            if (isLogin) {
+                // LOGIN
+                if (!email.trim() || !password.trim()) {
+                    setMessage({ type: 'error', text: 'Preencha email e senha.' });
+                    return;
+                }
+
+                const passwordHash = await hashPassword(password);
+                const student = await db.loginStudent(email.trim(), passwordHash);
+
+                if (!student) {
+                    setMessage({ type: 'error', text: 'Email ou senha incorretos.' });
+                    return;
+                }
+
+                if ((student as any).loginError === 'pending') {
+                    setMessage({
+                        type: 'info',
+                        text: 'Seu cadastro está aguardando aprovação do administrador.'
+                    });
+                    return;
+                }
+
+                if ((student as any).loginError === 'rejected') {
+                    setMessage({
+                        type: 'error',
+                        text: 'Seu cadastro foi rejeitado. Entre em contato com o suporte.'
+                    });
+                    return;
+                }
+
+                // Login bem-sucedido
+                const isAdmin = email.trim().toLowerCase() === 'brenooodesena@gmail.com';
+                onLogin(isAdmin, email.trim());
+
+
+            } else {
+                // CADASTRO
+                if (!name.trim()) {
+                    setMessage({ type: 'error', text: 'Por favor, preencha seu nome.' });
+                    return;
+                }
+                if (!email.trim() || !password.trim()) {
+                    setMessage({ type: 'error', text: 'Preencha todos os campos.' });
+                    return;
+                }
+                if (password.length < 6) {
+                    setMessage({ type: 'error', text: 'Senha deve ter no mínimo 6 caracteres.' });
+                    return;
+                }
+
+                const passwordHash = await hashPassword(password);
+
+                // Auto-aprovar se for o email do admin
+                const isAdminEmail = email.trim().toLowerCase() === 'brenooodesena@gmail.com';
+
+                if (isAdminEmail) {
+                    // Cadastrar admin com status approved
+                    await db.registerStudent(name.trim(), email.trim(), passwordHash, 'approved');
+
+                    setMessage({
+                        type: 'success',
+                        text: '✅ Cadastro de administrador criado! Você já pode fazer login.'
+                    });
+                } else {
+                    // Cadastro normal (precisa aprovação)
+                    await db.registerStudent(name.trim(), email.trim(), passwordHash);
+
+                    setMessage({
+                        type: 'success',
+                        text: 'Cadastro enviado! Aguarde a aprovação do administrador.'
+                    });
+                }
+
+                // Limpar formulário
+                setName('');
+                setEmail('');
+                setPassword('');
+
+                // Mudar para tela de login
+                setTimeout(() => {
+                    setIsLogin(true);
+                    setMessage(null);
+                }, isAdminEmail ? 2000 : 3000);
+            }
+        } catch (error: any) {
+            console.error(error);
+            if (error.message?.includes('duplicate')) {
+                setMessage({ type: 'error', text: 'Este email já está cadastrado.' });
+            } else {
+                setMessage({
+                    type: 'error',
+                    text: isLogin ? 'Erro ao fazer login.' : 'Erro ao cadastrar. Tente novamente.'
+                });
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-black text-white">
+            {/* Background Elements */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-gold-500/5 rounded-full blur-[100px] pointer-events-none" />
+
+            {/* Central Golden Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gold-500/15 rounded-full blur-[120px] pointer-events-none z-0" />
+
+            {/* Logo above card */}
+            <div className="mb-2 relative z-10 text-center">
+                <img
+                    src="/logo-design.png"
+                    alt="Logo"
+                    className="h-16 object-contain mx-auto mix-blend-screen"
+                />
+            </div>
+
+            {/* Main Card */}
+            <div className="w-full max-w-[400px] bg-black-900 border border-white/5 rounded-2xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] relative overflow-hidden backdrop-blur-sm z-10">
+                {/* Top Highlight Line */}
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-linear-to-r from-transparent via-gold-400/50 to-transparent" />
+
+                <div className="p-8">
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                            Área de <span className="text-gold-gradient">Membros</span>
+                        </h1>
+                        <p className="text-white/40 text-sm">
+                            {isLogin ? 'Acesse seus cursos e ferramentas' : 'Solicite seu acesso'}
+                        </p>
+                    </div>
+
+                    {/* Message */}
+                    {message && (
+                        <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20' :
+                            message.type === 'info' ? 'bg-blue-500/10 border border-blue-500/20' :
+                                'bg-red-500/10 border border-red-500/20'
+                            }`}>
+                            {message.type === 'success' ? (
+                                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                            ) : (
+                                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                            )}
+                            <p className={`text-sm ${message.type === 'success' ? 'text-green-200' :
+                                message.type === 'info' ? 'text-blue-200' :
+                                    'text-red-200'
+                                }`}>
+                                {message.text}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Toggle Tabs */}
+                    <div className="flex bg-black-800 p-1 rounded-lg mb-8 border border-white/5">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsLogin(true);
+                                setMessage(null);
+                            }}
+                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-300 cursor-pointer ${isLogin
+                                ? 'bg-black-900 text-white shadow-sm border border-white/10'
+                                : 'text-white/40 hover:text-white/70'
+                                }`}
+                        >
+                            Entrar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsLogin(false);
+                                setMessage(null);
+                            }}
+                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-300 cursor-pointer ${!isLogin
+                                ? 'bg-black-900 text-white shadow-sm border border-white/10'
+                                : 'text-white/40 hover:text-white/70'
+                                }`}
+                        >
+                            Criar conta
+                        </button>
+                    </div>
+
+                    {/* Form */}
+                    <form className="space-y-5" onSubmit={handleSubmit}>
+                        {!isLogin && (
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-white/70 ml-1">Nome Completo</label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/40 group-focus-within:text-gold-400 transition-colors z-20">
+                                        <User size={20} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Seu nome completo"
+                                        className="input-premium !pl-14 relative"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        required={!isLogin}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-white/70 ml-1">Email</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/40 group-focus-within:text-gold-400 transition-colors z-20">
+                                    <Mail size={20} />
+                                </div>
+                                <input
+                                    type="email"
+                                    placeholder="Seu email principal"
+                                    className="input-premium !pl-14 relative"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-white/70 ml-1">Senha</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/40 group-focus-within:text-gold-400 transition-colors z-20">
+                                    <Lock size={20} />
+                                </div>
+                                <input
+                                    type="password"
+                                    placeholder={isLogin ? 'Sua senha' : 'Mínimo 6 caracteres'}
+                                    className="input-premium !pl-14 relative"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    disabled={isLoading}
+                                />
+                            </div>
+                            {isLogin && (
+                                <div className="flex justify-end">
+                                    <a href="#" className="text-xs text-gold-400/80 hover:text-gold-400 transition-colors">
+                                        Esqueci minha senha
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="btn-gold w-full py-3 rounded-lg flex items-center justify-center gap-2 group !mt-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? (
+                                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <span className="font-semibold text-black tracking-wide">
+                                        {isLogin ? 'Entrar Agora' : 'Criar Conta'}
+                                    </span>
+                                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform text-black" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Footer decoration */}
+                <div className="bg-black-800/50 py-4 text-center border-t border-white/5">
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                        Ambiente 100% Seguro
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
