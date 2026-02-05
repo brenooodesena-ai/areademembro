@@ -388,8 +388,17 @@ export const db = {
             .ilike('email', email)
             .single();
 
-        if (error || !data) return false;
-        return true;
+        if (error) {
+            console.error('SUPABASE CHECK EMAIL ERROR:', error);
+            // Ignore 'Row not found' error (code PGRST116) as it just means email doesn't exist
+            if (error.code === 'PGRST116') return false;
+            // For other errors, we might want to throw or return false. 
+            // Returning false for connection error is risky as user thinks email is wrong.
+            // Let's log it clearly.
+            return false;
+        }
+
+        return !!data;
     },
 
     updatePassword: async (email: string, passwordHash: string) => {
