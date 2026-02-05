@@ -35,7 +35,7 @@ export function Login({ onLogin }: LoginProps) {
 
                 const exists = await db.checkEmailExists(resetEmail.trim());
                 if (!exists) {
-                    setMessage({ type: 'error', text: 'Email não encontrado.' });
+                    setMessage({ type: 'error', text: 'Email não encontrado. Verifique se digitou o endereço completo.' });
                     return;
                 }
 
