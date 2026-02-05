@@ -1,11 +1,19 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 
+export interface Attachment {
+    id: string;
+    name: string;
+    url: string;
+}
+
 export interface Lesson {
     id: string;
     module_id?: string;
     title: string;
     description: string;
     videoId?: string;
+    thumbnail?: string;
+    attachments?: Attachment[];
     order_index?: number;
 }
 
@@ -133,6 +141,20 @@ export const db = {
             .eq('id', id);
 
         if (error) throw error;
+    },
+
+    updateModuleOrder: async (modules: Module[]) => {
+        // Iterate and update order_index for each module
+        for (let i = 0; i < modules.length; i++) {
+            const { error } = await supabase
+                .from('modules')
+                .update({ order_index: i })
+                .eq('id', modules[i].id);
+
+            if (error) {
+                console.error(`Error updating order for module ${modules[i].id}:`, error);
+            }
+        }
     },
 
     syncModule: async (module: Module) => {
@@ -342,10 +364,38 @@ export const db = {
         if (error) throw error;
     },
 
+    deleteStudent: async (studentId: string) => {
+        const { error } = await supabase
+            .from('students')
+            .delete()
+            .eq('id', studentId);
+
+        if (error) throw error;
+    },
+
     updateStudentName: async (email: string, newName: string) => {
         const { error } = await supabase
             .from('students')
-            .update({ name: newName })
+            .upsert({ email, name: newName }, { onConflict: 'email' });
+
+        if (error) throw error;
+    },
+
+    checkEmailExists: async (email: string) => {
+        const { data, error } = await supabase
+            .from('students')
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        if (error || !data) return false;
+        return true;
+    },
+
+    updatePassword: async (email: string, passwordHash: string) => {
+        const { error } = await supabase
+            .from('students')
+            .update({ password_hash: passwordHash })
             .eq('email', email);
 
         if (error) throw error;

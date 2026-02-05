@@ -1,10 +1,11 @@
-import { useState, Dispatch, SetStateAction, useRef, useEffect } from 'react';
-import { ArrowLeft, Plus, Image as ImageIcon, Users, Link as LinkIcon, Trash2, Edit2, FileVideo, ShieldCheck, LayoutDashboard, BookOpen, PlayCircle, Send, ToggleLeft, ToggleRight, Upload, X, Save } from 'lucide-react';
+import { useState, type Dispatch, type SetStateAction, useEffect } from 'react';
+import { ArrowLeft, Plus, Image as ImageIcon, Users, Link as LinkIcon, Trash2, Edit2, FileVideo, ShieldCheck, LayoutDashboard, BookOpen, PlayCircle, Send, Upload, X, Save, FilePlus } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 
-import type { BannerConfig, Module, Lesson } from './Dashboard';
+import type { BannerConfig, Module, Lesson, Attachment } from './Dashboard';
 import { db, type Student } from './lib/db';
 
 interface AdminDashboardProps {
@@ -16,7 +17,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModules, onBack }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'banner' | 'modules' | 'students' | 'approvals'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'banner' | 'modules' | 'students' | 'approvals' | 'access'>('overview');
     const [editingModule, setEditingModule] = useState<string | null>(null);
 
     // Real Data State
@@ -35,15 +36,83 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         }
     }, [activeTab]);
 
+    // Real-time Subscription
+    useEffect(() => {
+        if (!isSupabaseConfigured) return;
+
+        const channel = supabase
+            .channel('students-db-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'students',
+                },
+                async () => {
+                    const students = await db.getStudents();
+                    setStudentsData(students);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const refreshStudents = async () => {
+        setIsRefreshing(true);
+        try {
+            const students = await db.getStudents();
+            setStudentsData(students);
+        } catch (error) {
+            console.error('Error refreshing students:', error);
+        } finally {
+            // Add a small delay for smooth animation
+            setTimeout(() => setIsRefreshing(false), 600);
+        }
+    };
+
     // Module Editing State
     const [newLessonTitle, setNewLessonTitle] = useState("");
     const [newLessonDescription, setNewLessonDescription] = useState("");
     const [newLessonVideoId, setNewLessonVideoId] = useState("");
+    const [newLessonThumbnail, setNewLessonThumbnail] = useState("");
+    const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
     // New Module Modal State
     const [isNewModuleModalOpen, setIsNewModuleModalOpen] = useState(false);
     const [tempNewModule, setTempNewModule] = useState({ title: "", image: "", showTitle: false });
+
+    // Student Deletion State
+    const [isDeleteStudentModalOpen, setIsDeleteStudentModalOpen] = useState(false);
+    const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+    const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleConfirmDeleteStudent = async () => {
+        if (!studentToDelete || deleteConfirmationText.toLowerCase() !== 'excluir') return;
+
+        setIsDeleting(true);
+        try {
+            await db.deleteStudent(studentToDelete.id);
+            const updated = await db.getStudents();
+            setStudentsData(updated);
+            setIsDeleteStudentModalOpen(false);
+            setStudentToDelete(null);
+            setDeleteConfirmationText("");
+            alert(`✅ Aluno ${studentToDelete.name} excluído com sucesso.`);
+        } catch (error) {
+            console.error('Error deleting student:', error);
+            alert('Erro ao excluir aluno.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     const handleNewModuleClick = () => {
         setTempNewModule({
@@ -79,25 +148,24 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
+            reader.onloadend = async () => {
+                const newImage = reader.result as string;
+
+                // 1. Update State
                 const updatedModules = modules.map(m =>
-                    m.id === moduleId ? { ...m, image: reader.result as string } : m
+                    m.id === moduleId ? { ...m, image: newImage } : m
                 );
                 setModules(updatedModules);
+
+                // 2. Save to DB
+                try {
+                    await db.updateModule(moduleId, { image: newImage });
+                } catch (error) {
+                    console.error("Error saving module image:", error);
+                    alert("Erro ao salvar a imagem no banco.");
+                }
             };
             reader.readAsDataURL(file);
-        }
-    };
-
-    const handleModuleUpdate = async (moduleId: string, updates: Partial<Module>) => {
-        try {
-            await db.updateModule(moduleId, updates);
-            const updatedModules = modules.map(m =>
-                m.id === moduleId ? { ...m, ...updates } : m
-            );
-            setModules(updatedModules);
-        } catch (error) {
-            console.error("Error updating module:", error);
         }
     };
 
@@ -143,6 +211,8 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonTitle(lesson.title);
         setNewLessonDescription(lesson.description);
         setNewLessonVideoId(lesson.videoId || "");
+        setNewLessonThumbnail(lesson.thumbnail || "");
+        setNewLessonAttachments(lesson.attachments || []);
     };
 
     const cancelEdit = () => {
@@ -150,6 +220,8 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonTitle("");
         setNewLessonDescription("");
         setNewLessonVideoId("");
+        setNewLessonThumbnail("");
+        setNewLessonAttachments([]);
     };
 
     const handleSaveLesson = async (moduleId: string) => {
@@ -161,7 +233,9 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                 id: editingLessonId || Date.now().toString(), // Temp ID if new
                 title: newLessonTitle,
                 description,
-                videoId: newLessonVideoId
+                videoId: newLessonVideoId,
+                thumbnail: newLessonThumbnail,
+                attachments: newLessonAttachments
             };
 
             // REMOVED await db.saveLesson(moduleId, lessonData); -- Now draft only
@@ -228,7 +302,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         })
     );
 
-    const handleDragEnd = (event: DragEndEvent) => {
+    const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
 
         if (active.id !== over?.id) {
@@ -238,11 +312,12 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
 
                 const newOrder = arrayMove(items, oldIndex, newIndex);
 
-                // Re-calculate IDs based on new position (1-based index)
-                return newOrder.map((mod, index) => ({
-                    ...mod,
-                    id: (index + 1).toString()
-                }));
+                // Persist the new order to the database
+                db.updateModuleOrder(newOrder).catch(error => {
+                    console.error("Error saving module order:", error);
+                });
+
+                return newOrder;
             });
         }
     };
@@ -461,11 +536,11 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                         <div key={student.id} className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-4 hover:border-white/20 transition-colors">
                                             <div className="flex items-center gap-4 min-w-[300px]">
                                                 <div className="w-10 h-10 rounded-full bg-linear-to-tr from-gold-500 to-green-500 flex items-center justify-center text-black font-bold text-sm uppercase">
-                                                    {(student.name || student.email).split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                    {(student.name || student.email || "Aluno").split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-white leading-tight">{student.name}</h4>
-                                                    <p className="text-xs text-white/40">{student.email}</p>
+                                                    <h4 className="font-bold text-white leading-tight">{student.name || "Sem Nome"}</h4>
+                                                    <p className="text-xs text-white/40">{student.email || "Sem Email"}</p>
                                                 </div>
                                             </div>
 
@@ -502,60 +577,190 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                 {/* BANNER TAB */}
                 {activeTab === 'banner' && (
                     <div className="max-w-4xl">
-                        <h2 className="text-3xl font-bold mb-8">Personalizar Banner</h2>
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-3xl font-bold">Personalizar Banner</h2>
+                        </div>
 
-                        <div className="bg-black border border-white/10 rounded-2xl p-8 space-y-8">
+                        <div className="bg-black border border-white/10 rounded-2xl p-8 space-y-12">
 
-                            {/* Preview Area */}
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-lg text-white/80 border-b border-white/10 pb-2">Pré-visualização da Média</h3>
-                                <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black-800 border border-white/5 group">
-                                    {bannerConfig.type === 'video' ? (
-                                        <video src={bannerConfig.desktopMediaUrl} className="w-full h-full object-cover" autoPlay muted loop />
-                                    ) : (
-                                        <img src={bannerConfig.desktopMediaUrl} className="w-full h-full object-cover" alt="Banner Preview" />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <label className="cursor-pointer bg-white text-black px-6 py-3 rounded-full font-bold hover:scale-105 transition-transform flex items-center gap-2">
-                                            <Upload size={18} />
-                                            Trocar {bannerConfig.type === 'video' ? 'Vídeo' : 'Imagem'}
+                            {/* --- DESKTOP BANNER SECTION --- */}
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                    <h3 className="font-bold text-xl text-white">Banner Desktop</h3>
+                                    <span className="text-xs text-white/40 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                        Recomendado: 2000x590 pixels
+                                    </span>
+                                </div>
+
+                                {/* Desktop Banner Content */}
+                                {bannerConfig.desktopMediaUrl ? (
+                                    <div className="space-y-4">
+                                        <div className="relative aspect-[3.4/1] w-full rounded-xl overflow-hidden bg-black-800 border border-white/5 group">
+                                            {/* Media Display */}
+                                            {bannerConfig.desktopMediaType === 'video' ? (
+                                                <video src={bannerConfig.desktopMediaUrl} className="w-full h-full object-cover" autoPlay muted loop />
+                                            ) : (
+                                                <img src={bannerConfig.desktopMediaUrl} className="w-full h-full object-cover" alt="Banner Desktop" />
+                                            )}
+
+                                            {/* Hover Overlay with Actions */}
+                                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                                                {/* Trash/Remove Button */}
+                                                <button
+                                                    onClick={() => setBannerConfig({ ...bannerConfig, desktopMediaUrl: '' })}
+                                                    className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-500 flex items-center justify-center transition-all scale-90 hover:scale-105"
+                                                    title="Remover mídia para trocar"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Empty State - Choose Type */
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <label className="aspect-video bg-white/5 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/10 hover:border-gold-500/50 hover:text-gold-400 transition-all group">
+                                            <div className="w-16 h-16 rounded-full bg-black flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <ImageIcon size={32} />
+                                            </div>
+                                            <span className="font-bold">Carregar Imagem</span>
                                             <input
                                                 type="file"
-                                                accept={bannerConfig.type === 'video' ? "video/*" : "image/*"}
+                                                accept="image/*"
                                                 className="hidden"
                                                 onChange={(e) => {
                                                     const file = e.target.files?.[0];
                                                     if (file) {
                                                         const reader = new FileReader();
-                                                        reader.onloadend = () => setBannerConfig({ ...bannerConfig, desktopMediaUrl: reader.result as string });
+                                                        reader.onloadend = () => setBannerConfig({
+                                                            ...bannerConfig,
+                                                            desktopMediaUrl: reader.result as string,
+                                                            desktopMediaType: 'image'
+                                                        });
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+
+                                        <label className="aspect-video bg-white/5 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/10 hover:border-gold-500/50 hover:text-gold-400 transition-all group">
+                                            <div className="w-16 h-16 rounded-full bg-black flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <FileVideo size={32} />
+                                            </div>
+                                            <span className="font-bold">Carregar Vídeo</span>
+                                            <input
+                                                type="file"
+                                                accept="video/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setBannerConfig({
+                                                            ...bannerConfig,
+                                                            desktopMediaUrl: reader.result as string,
+                                                            desktopMediaType: 'video'
+                                                        });
                                                         reader.readAsDataURL(file);
                                                     }
                                                 }}
                                             />
                                         </label>
                                     </div>
-                                </div>
+                                )}
                             </div>
-                            <p className="text-white/40 text-sm">Tamanho recomendado: 2000x590 pixels</p>
 
 
-                            {/* TYPE SELECTOR */}
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setBannerConfig({ ...bannerConfig, type: 'image' })}
-                                    className={`flex-1 py-3 rounded-lg border ${bannerConfig.type === 'image' ? 'bg-gold-500 text-black border-gold-500 font-bold' : 'bg-transparent border-white/20 text-white/60 hover:border-white/40'}`}
-                                >
-                                    Usar Imagem
-                                </button>
-                                <button
-                                    onClick={() => setBannerConfig({ ...bannerConfig, type: 'video' })}
-                                    className={`flex-1 py-3 rounded-lg border ${bannerConfig.type === 'video' ? 'bg-gold-500 text-black border-gold-500 font-bold' : 'bg-transparent border-white/20 text-white/60 hover:border-white/40'}`}
-                                >
-                                    Usar Vídeo
-                                </button>
+                            {/* --- MOBILE BANNER SECTION --- */}
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                    <h3 className="font-bold text-xl text-white">Banner Mobile</h3>
+                                    <span className="text-xs text-white/40 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                        Recomendado: 400x400 pixels
+                                    </span>
+                                </div>
+
+                                {/* Mobile Banner Content */}
+                                {bannerConfig.mobileMediaUrl ? (
+                                    <div className="space-y-4">
+                                        <div className="relative w-[200px] aspect-square rounded-xl overflow-hidden bg-black-800 border border-white/5 group mx-auto md:mx-0">
+                                            {/* Media Display */}
+                                            {bannerConfig.mobileMediaType === 'video' ? (
+                                                <video src={bannerConfig.mobileMediaUrl} className="w-full h-full object-cover" autoPlay muted loop />
+                                            ) : (
+                                                <img src={bannerConfig.mobileMediaUrl} className="w-full h-full object-cover" alt="Banner Mobile" />
+                                            )}
+
+                                            {/* Hover Overlay with Actions */}
+                                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                                                {/* Trash/Remove Button */}
+                                                <button
+                                                    onClick={() => setBannerConfig({ ...bannerConfig, mobileMediaUrl: '' })}
+                                                    className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-500 flex items-center justify-center transition-all scale-90 hover:scale-105"
+                                                    title="Remover mídia para trocar"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Empty State - Choose Type */
+                                    <div className="grid grid-cols-2 gap-6 max-w-lg">
+                                        <label className="aspect-square bg-white/5 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/10 hover:border-gold-500/50 hover:text-gold-400 transition-all group">
+                                            <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <ImageIcon size={24} />
+                                            </div>
+                                            <span className="font-bold text-sm">Imagem</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setBannerConfig({
+                                                            ...bannerConfig,
+                                                            mobileMediaUrl: reader.result as string,
+                                                            mobileMediaType: 'image'
+                                                        });
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+
+                                        <label className="aspect-square bg-white/5 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/10 hover:border-gold-500/50 hover:text-gold-400 transition-all group">
+                                            <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <FileVideo size={24} />
+                                            </div>
+                                            <span className="font-bold text-sm">Vídeo</span>
+                                            <input
+                                                type="file"
+                                                accept="video/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setBannerConfig({
+                                                            ...bannerConfig,
+                                                            mobileMediaUrl: reader.result as string,
+                                                            mobileMediaType: 'video'
+                                                        });
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="border-t border-white/10 my-8"></div>
+
+                            <h3 className="font-bold text-xl text-white mb-6">Informações e Ações</h3>
 
                             {/* EDIT SECTION: TITLE */}
                             <div className="space-y-4">
@@ -706,13 +911,14 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                     <p className="text-white/40 text-sm">Aprove ou rejeite os cadastros abaixo</p>
                                 </div>
                                 <button
-                                    onClick={async () => {
-                                        const students = await db.getStudents();
-                                        setStudentsData(students);
-                                    }}
-                                    className="text-sm text-gold-500 hover:text-white transition-colors px-4 py-2 border border-gold-500/20 rounded-lg hover:border-gold-500/50"
+                                    onClick={refreshStudents}
+                                    disabled={isRefreshing}
+                                    className={`text-sm text-gold-500 hover:text-white transition-all px-4 py-2 border border-gold-500/20 rounded-lg hover:border-gold-500/50 flex items-center gap-2 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                    Atualizar
+                                    <div className={`${isRefreshing ? 'animate-spin' : ''}`}>
+                                        <Save size={14} className="rotate-90" />
+                                    </div>
+                                    {isRefreshing ? 'Atualizando...' : 'Atualizar'}
                                 </button>
                             </div>
 
@@ -724,11 +930,11 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                 {/* Student Info */}
                                                 <div className="flex items-center gap-4 flex-1">
                                                     <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm uppercase">
-                                                        {(student.name || student.email).split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                        {(student.name || student.email || "Aluno").split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold text-white text-lg leading-tight">{student.name}</h4>
-                                                        <p className="text-sm text-white/60">{student.email}</p>
+                                                        <h4 className="font-bold text-white text-lg leading-tight">{student.name || "Sem Nome"}</h4>
+                                                        <p className="text-sm text-white/60">{student.email || "Sem Email"}</p>
                                                         <p className="text-xs text-white/30 mt-1">
                                                             Cadastrado em: {student.created_at ? new Date(student.created_at).toLocaleString('pt-BR', {
                                                                 day: '2-digit',
@@ -804,16 +1010,28 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                         <div key={student.id} className="bg-green-500/5 border border-green-500/20 rounded-lg p-4 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold text-sm">
-                                                    {(student.name || student.email).split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                    {(student.name || student.email || "Aluno").split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-white">{student.name}</h4>
-                                                    <p className="text-xs text-white/40">{student.email}</p>
+                                                    <h4 className="font-bold text-white">{student.name || "Sem Nome"}</h4>
+                                                    <p className="text-xs text-white/40">{student.email || "Sem Email"}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 text-green-400 text-sm">
-                                                <ShieldCheck size={16} />
-                                                Aprovado
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2 text-green-400 text-sm">
+                                                    <ShieldCheck size={16} />
+                                                    Aprovado
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setStudentToDelete(student);
+                                                        setIsDeleteStudentModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                    title="Excluir Aluno"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
                                         </div>
                                     ))
@@ -832,16 +1050,28 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                         <div key={student.id} className="bg-red-500/5 border border-red-500/20 rounded-lg p-4 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-sm">
-                                                    {(student.name || student.email).split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                    {(student.name || student.email || "Aluno").split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-white">{student.name}</h4>
-                                                    <p className="text-xs text-white/40">{student.email}</p>
+                                                    <h4 className="font-bold text-white">{student.name || "Sem Nome"}</h4>
+                                                    <p className="text-xs text-white/40">{student.email || "Sem Email"}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 text-red-400 text-sm">
-                                                <X size={16} />
-                                                Rejeitado
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2 text-red-400 text-sm">
+                                                    <X size={16} />
+                                                    Rejeitado
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setStudentToDelete(student);
+                                                        setIsDeleteStudentModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                    title="Excluir Aluno"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
@@ -861,8 +1091,8 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                     <LinkIcon size={20} />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-green-500">Sistema de Entrega Automática Ativo</h3>
-                                    <p className="text-white/40 text-sm">O acesso é enviado automaticamente para o email do aluno após a compra.</p>
+                                    <h3 className="text-lg font-bold text-green-500">Sistema de Entrega Automática (Resend)</h3>
+                                    <p className="text-white/40 text-sm">O acesso é enviado automaticamente para o email do aluno assim que o pagamento for aprovado.</p>
                                 </div>
                             </div>
 
@@ -871,27 +1101,27 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                     <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Plataforma de Vendas</p>
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                        <span className="font-bold">Conectado</span>
+                                        <span className="font-bold">Kiwify & Cakto</span>
                                     </div>
-                                    <p className="text-white/30 text-xs mt-2">Aguardando novas vendas...</p>
+                                    <p className="text-white/30 text-xs mt-2">Pronto para receber vendas...</p>
                                 </div>
 
                                 <div className="bg-white/5 p-6 rounded-xl border border-white/10">
                                     <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Serviço de Email</p>
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                        <span className="font-bold">Operacional</span>
+                                        <span className="font-bold">Resend Conectado</span>
                                     </div>
-                                    <p className="text-white/30 text-xs mt-2">Emails sendo disparados instantaneamente.</p>
+                                    <p className="text-white/30 text-xs mt-2">Emails sendo disparados automaticamente via Supabase.</p>
                                 </div>
                             </div>
 
                             <div className="border-t border-white/10 pt-6">
                                 <h4 className="font-bold mb-4">Configuração de Webhook</h4>
                                 <div className="bg-black-900 rounded-lg p-4 font-mono text-sm text-white/60 break-all select-all cursor-pointer hover:bg-black-800 transition-colors border border-white/5">
-                                    https://api.brenosystem.com/v1/webhook/purchase-confirmation
+                                    https://hxhmgxaacessovzftoby.supabase.co/functions/v1/kiwify-webhook
                                 </div>
-                                <p className="text-white/30 text-xs mt-2">Configure este URL na sua plataforma de vendas para ativar a entrega automática.</p>
+                                <p className="text-white/30 text-xs mt-2">Configure este URL na Kiwify ou Cakto. Certifique-se de ter adicionado a "RESEND_API_KEY" nos Secrets do Supabase.</p>
                             </div>
                         </div>
                     </div>
@@ -904,7 +1134,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                         <div className="bg-black-900 border border-white/10 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl">
                             <div className="p-6 border-b border-white/10 flex justify-between items-center">
-                                <h3 className="text-2xl font-bold">Editar Aulas - Módulo {editingModule}</h3>
+                                <h3 className="text-2xl font-bold">Editar Aulas - {modules.find(m => m.id === editingModule)?.title || `Módulo ${modules.findIndex(m => m.id === editingModule) + 1}`}</h3>
                                 <button onClick={() => setEditingModule(null)} className="flex items-center gap-2 text-white/60 hover:text-white transition-colors px-4 py-2 rounded-lg hover:bg-white/5">
                                     <ArrowLeft size={20} />
                                     <span className="font-bold">Voltar</span>
@@ -960,6 +1190,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                             onChange={(e) => setNewLessonDescription(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
                                         />
+                                        {/* Video Upload Area with Trash Icon */}
                                         <div className="relative group">
                                             <div className={`w-full bg-black border border-dashed ${newLessonVideoId ? 'border-green-500/50' : 'border-white/10'} rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-3 transition-colors hover:border-gold-500/30`}>
                                                 <div className="p-3 bg-white/5 rounded-full group-hover:bg-gold-500/10 transition-colors">
@@ -982,20 +1213,139 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                         if (file) {
                                                             const url = URL.createObjectURL(file);
                                                             setNewLessonVideoId(url);
+                                                            alert("Vídeo selecionado com sucesso!");
                                                         }
+                                                        e.target.value = ''; // Reset input to allow re-uploading the same file
                                                     }}
                                                 />
                                             </div>
                                             {newLessonVideoId && (
                                                 <button
                                                     onClick={() => setNewLessonVideoId("")}
-                                                    className="absolute top-2 right-2 p-1 bg-black/50 hover:bg-red-500/20 text-white/40 hover:text-red-500 rounded-full transition-colors"
+                                                    className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-red-500/20 text-white/60 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/30 shadow-lg"
                                                     title="Remover vídeo"
                                                 >
-                                                    <X size={14} />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             )}
                                         </div>
+
+                                        {/* Thumbnail Upload Area (Optional) */}
+                                        <div className="relative group">
+                                            <div className={`w-full bg-black border border-dashed ${newLessonThumbnail ? 'border-gold-500/50' : 'border-white/10'} rounded-lg px-4 py-6 flex flex-col items-center justify-center gap-2 transition-colors hover:border-gold-500/30`}>
+                                                {newLessonThumbnail ? (
+                                                    <div className="relative w-full aspect-video rounded-md overflow-hidden border border-white/10">
+                                                        <img src={newLessonThumbnail} className="w-full h-full object-cover" alt="Thumbnail Preview" />
+                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Upload size={20} className="text-white" />
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="p-2 bg-white/5 rounded-full group-hover:bg-gold-500/10 transition-colors">
+                                                            <ImageIcon size={20} className="text-white/40 group-hover:text-gold-500 transition-colors" />
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <p className="text-xs font-bold text-white">Thumbnail (Opcional)</p>
+                                                            <p className="text-[10px] text-white/30 mt-0.5">Recomendado: 1280x720px</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setNewLessonThumbnail(reader.result as string);
+                                                                alert("Thumbnail selecionada com sucesso!");
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                        e.target.value = ''; // Reset input to allow re-uploading the same file
+                                                    }}
+                                                />
+                                            </div>
+                                            {newLessonThumbnail && (
+                                                <button
+                                                    onClick={() => setNewLessonThumbnail("")}
+                                                    className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-red-500/20 text-white/60 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/30 shadow-lg z-10"
+                                                    title="Remover thumbnail"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Complementary Materials (Attachments) */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h5 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                                                    <BookOpen size={12} /> Materiais Complementares
+                                                </h5>
+                                                <div className="relative">
+                                                    <button className="text-gold-500 hover:text-gold-400 text-xs font-bold flex items-center gap-1 transition-colors group">
+                                                        <Plus size={14} className="group-hover:rotate-90 transition-transform" />
+                                                        Adicionar
+                                                    </button>
+                                                    <input
+                                                        type="file"
+                                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                                        multiple
+                                                        onChange={(e) => {
+                                                            const files = e.target.files;
+                                                            if (files) {
+                                                                const newAttachments: Attachment[] = [];
+                                                                Array.from(files).forEach(file => {
+                                                                    const url = URL.createObjectURL(file);
+                                                                    newAttachments.push({
+                                                                        id: Math.random().toString(36).substr(2, 9),
+                                                                        name: file.name,
+                                                                        url: url
+                                                                    });
+                                                                });
+                                                                setNewLessonAttachments([...newLessonAttachments, ...newAttachments]);
+                                                            }
+                                                            e.target.value = '';
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
+                                                {newLessonAttachments.length > 0 ? (
+                                                    newLessonAttachments.map((att) => (
+                                                        <div key={att.id} className="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center justify-between group hover:bg-white/[0.08] transition-colors">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="w-8 h-8 rounded-md bg-white/5 flex items-center justify-center text-white/40">
+                                                                    <FilePlus size={16} />
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-bold text-white/90 truncate">{att.name}</p>
+                                                                    <p className="text-[10px] text-white/30 truncate">Arquivo de material</p>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setNewLessonAttachments(newLessonAttachments.filter(a => a.id !== att.id))}
+                                                                className="text-white/20 hover:text-red-500 p-2 transition-colors"
+                                                                title="Remover material"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="bg-black/20 border border-dashed border-white/10 rounded-lg p-4 text-center">
+                                                        <p className="text-xs text-white/20 font-medium">Nenhum material adicionado.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+
                                         <div className="flex gap-2 mt-auto pt-4">
                                             {editingLessonId && (
                                                 <button
@@ -1095,6 +1445,57 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                     </div>
                 </div>
             )}
+            {/* DELETE STUDENT CONFIRMATION MODAL */}
+            {isDeleteStudentModalOpen && studentToDelete && (
+                <div className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-black-900 border border-red-500/20 rounded-2xl w-full max-w-sm p-6 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="text-center space-y-2">
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                                <Trash2 className="text-red-500" size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-white">Excluir Aluno?</h3>
+                            <p className="text-white/60 text-sm">
+                                Esta ação é irreversível. O aluno <strong>{studentToDelete.name}</strong> perderá o acesso permanentemente.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <p className="text-[10px] text-white/40 uppercase font-bold tracking-widest text-center">
+                                    Digite "excluir" abaixo para confirmar
+                                </p>
+                                <input
+                                    type="text"
+                                    value={deleteConfirmationText}
+                                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                                    placeholder="Digite aqui..."
+                                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-center text-white focus:border-red-500 outline-none transition-colors"
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setIsDeleteStudentModalOpen(false);
+                                        setStudentToDelete(null);
+                                        setDeleteConfirmationText("");
+                                    }}
+                                    className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleConfirmDeleteStudent}
+                                    disabled={deleteConfirmationText.toLowerCase() !== 'excluir' || isDeleting}
+                                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:hover:bg-red-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-500/20"
+                                >
+                                    {isDeleting ? 'Excluindo...' : 'Excluir'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
@@ -1144,23 +1545,24 @@ function SortableModule({ module, index, handleModuleImageUpload, setEditingModu
 
             <div className="relative aspect-[3/4]">
                 <img src={module.image} className="w-full h-full object-cover" onDragStart={(e) => e.preventDefault()} />
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity p-4">
-                    <label className="cursor-pointer bg-white text-black px-4 py-2 rounded-full font-bold text-sm w-full text-center hover:scale-105 transition-transform" onPointerDown={e => e.stopPropagation()}>
+                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity p-6">
+                    <label className="cursor-pointer bg-gold-500 text-black px-4 py-2 rounded-full font-bold text-sm w-full text-center hover:bg-gold-400 hover:scale-105 transition-all shadow-lg shadow-gold-500/20" onPointerDown={e => e.stopPropagation()}>
                         Trocar Capa
                         <input type="file" className="hidden" accept="image/*" onChange={(e) => handleModuleImageUpload(e, module.id)} />
                     </label>
                     <button
                         onPointerDown={e => e.stopPropagation()}
                         onClick={() => setEditingModule(module.id)}
-                        className="bg-gold-500 text-black px-6 py-3 rounded-full font-bold text-base w-full hover:scale-105 transition-transform shadow-lg shadow-gold-500/20"
+                        className="bg-white text-black px-6 py-3 rounded-full font-bold text-base w-full hover:bg-gray-200 hover:scale-105 transition-all shadow-lg"
                     >
                         Editar Aulas
                     </button>
                     <button
                         onPointerDown={e => e.stopPropagation()}
                         onClick={() => deleteModule(module.id)}
-                        className="bg-red-500/20 text-red-500 border border-red-500/50 px-4 py-2 rounded-full font-bold text-sm w-full hover:bg-red-500 hover:text-white transition-all"
+                        className="text-red-500/50 hover:text-red-500 text-xs font-medium mt-2 transition-colors flex items-center gap-1"
                     >
+                        <Trash2 size={12} />
                         Excluir Módulo
                     </button>
                 </div>

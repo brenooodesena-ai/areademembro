@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bot, Send, X, MessageCircle, Sparkles, User, Minimize2, Maximize2 } from 'lucide-react';
+import { Bot, Send, X, Minimize2, Maximize2 } from 'lucide-react';
 import type { Module } from '../Dashboard';
 
 interface Message {
@@ -36,17 +36,58 @@ export function StudentAI({ modules }: StudentAIProps) {
         scrollToBottom();
     }, [messages, isTyping, isOpen]);
 
+    // ------------------------------------------------------------------
+    // KNOWLEDGE BASE (Summaries provided by the user)
+    // ------------------------------------------------------------------
+    const MODULE_SUMMARIES: Record<string, string> = {
+        "bem vindo(a)": "Neste módulo, você terá uma visão clara de como o treinamento funciona, entenderá a lógica do método e aprenderá a se posicionar corretamente desde o início, criando segurança, clareza e direção para seguir o caminho certo no mercado digital.",
+        "avisos e suporte": "Neste módulo, você terá acesso ao número oficial de suporte do treinamento e ao grupo VIP dos alunos, além de entender todas as regras de funcionamento desses canais. Este módulo também será o espaço onde serão comunicados avisos importantes, atualizações e novidades do treinamento.",
+        "caminho iluminado": "Neste módulo, você irá alinhar sua mentalidade à realidade do mercado digital, compreender o que realmente funciona e aprender desde o básico, adquirindo uma base sólida de conhecimento sobre o mercado digital para evoluir com constância, disciplina e visão de longo prazo.",
+        "afiliado de sucesso": "Neste módulo, você entenderá como funciona o mercado de afiliados, aprenderá a escolher produtos e estratégias de forma consciente e desenvolverá a capacidade de estruturar vendas como afiliado com profissionalismo e consistência.",
+        "como ser produtor": "Neste módulo, você compreenderá a lógica da criação de produtos digitais, aprenderá a estruturar e posicionar seus próprios produtos no mercado e desenvolverá visão de negócio para construir ativos digitais sólidos e escaláveis.",
+        "estrutura de vendas": "Neste módulo, você entenderá como funcionam as engrenagens de uma estrutura de vendas eficiente, aprenderá a montar funis, páginas e ofertas estratégicas e criará sistemas capazes de gerar conversões de forma previsível.",
+        "marketing de conteúdo": "Neste módulo, você aprenderá como o conteúdo influencia decisões de compra, entenderá como construir autoridade no mercado e desenvolverá estratégias de conteúdo que atraem, engajam e convertem o público certo.",
+        "como fazer copywriting": "Neste módulo, você compreenderá a psicologia da venda, aprenderá a utilizar gatilhos mentais de forma ética e estratégica e desenvolverá textos persuasivos que aumentam significativamente suas taxas de conversão.",
+        "como subir caixa rápido": "Neste módulo, você aprenderá estratégias práticas para gerar caixa no curto prazo, entenderá como acelerar resultados financeiros e criar capital inicial para investir de forma estratégica no seu próprio negócio digital.",
+        "tráfego orgânico": "Neste módulo, você entenderá como gerar tráfego e vendas sem investimento em anúncios, aprenderá a usar redes sociais de forma estratégica e desenvolverá consistência através de métodos orgânicos sustentáveis.",
+        "tráfego pago facebook": "Neste módulo, você aprenderá como funciona a lógica dos anúncios pagos, entenderá o comportamento do algoritmo e desenvolverá campanhas no Facebook Ads com controle, estratégia e escalabilidade.",
+        "vendas com o whatsapp": "Neste módulo, você compreenderá como utilizar o WhatsApp como ferramenta de vendas, aprenderá a conduzir conversas estratégicas e desenvolverá abordagens que aumentam a conversão sem pressão ou desgaste.",
+        "inteligência artificial": "Aqui você entenderá como a inteligência artificial pode acelerar processos no marketing digital, aprenderá a aplicá-la na criação de conteúdo, copy e estratégias e ganhará produtividade e vantagem competitiva.",
+        "remarketing estratégico": "Neste módulo, você aprenderá a utilizar o remarketing de forma estratégica para recuperar vendas perdidas, reimpactar potenciais clientes que não compraram no primeiro contato e aumentar suas conversões com ações direcionadas e inteligentes.",
+        "pós-venda inteligente": "Aqui você compreenderá a importância do pós-venda na construção de negócios duradouros, aprenderá a encantar clientes após a compra e desenvolverá estratégias para recompra, fidelização e indicações.",
+        "obrigado": "Neste módulo final, você receberá a mensagem de encerramento do treinamento, reforçando a importância da continuidade, da aplicação do que foi aprendido e deixando o caminho aberto para sua evolução contínua no mercado digital."
+    };
+
     const generateResponse = (query: string): string => {
         const lowerQuery = query.toLowerCase();
 
-        // 1. Module Inquiries
+        // 1. Module Inquiries (Dynamic Lookup)
+        // Matches "módulo X", "modulo X", "módulo number", etc.
         if (lowerQuery.includes('módulo') || lowerQuery.includes('modulo')) {
             const moduleNumberMatch = lowerQuery.match(/\d+/);
             if (moduleNumberMatch) {
                 const moduleIndex = parseInt(moduleNumberMatch[0]) - 1;
-                const module = modules[moduleIndex];
+                const module = modules[moduleIndex]; // Get module by CURRENT position
+
                 if (module) {
-                    return `No **Módulo ${moduleIndex + 1}** (${module.title || 'Sem título'}), você vai aprender através de ${module.lessonCount} aulas incríveis. É uma parte fundamental do treinamento!`;
+                    // Normalize title key safe string access
+                    const rawTitle = (module.title || "").toLowerCase().trim();
+
+                    // Fuzzy Match Logic: Find key that is contained in title OR title contained in key
+                    const matchedKey = Object.keys(MODULE_SUMMARIES).find(key =>
+                        rawTitle.includes(key) || key.includes(rawTitle)
+                    );
+
+                    const summary = matchedKey ? MODULE_SUMMARIES[matchedKey] : null;
+
+                    console.log(`🤖 AI Debug: Index=${moduleIndex}, Title="${rawTitle}", MatchedKey="${matchedKey}", SummaryFound=${!!summary}`);
+
+                    if (summary) {
+                        return `**Módulo ${moduleIndex + 1}: ${module.title}**\n\n${summary}`;
+                    } else {
+                        // Fallback if summary is missing for some reason
+                        return `No **Módulo ${moduleIndex + 1}** (${module.title || 'Sem título'}), você vai aprender através de ${module.lessonCount} aulas incríveis. É uma parte fundamental do treinamento!`;
+                    }
                 } else {
                     return `O módulo ${moduleNumberMatch[0]} ainda não está disponível ou não existe. O curso atualmente tem ${modules.length} módulos.`;
                 }
@@ -72,7 +113,7 @@ export function StudentAI({ modules }: StudentAIProps) {
         }
 
         // 3. Fallback
-        return "Interessante pergunta! Como sou uma IA em treinamento focada no curso, ainda estou aprendendo sobre alguns detalhes específicos. Tente me perguntar sobre os módulos ou conceitos básicos de marketing!";
+        return "Interessante pergunta! Como sou uma IA em treinamento focada no curso, ainda estou aprendendo sobre alguns detalhes específicos. Tente me perguntar sobre os módulos (Ex: 'O que aprendo no módulo 3?') ou conceitos básicos de marketing!";
     };
 
     const handleSend = async () => {
@@ -129,7 +170,7 @@ export function StudentAI({ modules }: StudentAIProps) {
             {isOpen && (
                 <div className={`fixed z-50 transition-all duration-300 ${isMinimized
                     ? 'bottom-0 right-8 w-80 h-14 rounded-t-xl'
-                    : 'bottom-8 right-8 w-[90vw] md:w-[400px] h-[600px] max-h-[80vh] rounded-2xl'
+                    : 'bottom-8 right-4 w-[85vw] sm:w-[380px] md:w-[400px] h-[500px] sm:h-[550px] md:h-[600px] max-h-[75vh] sm:max-h-[80vh] rounded-2xl'
                     } bg-black/90 backdrop-blur-xl border border-gold-500/20 shadow-[0_0_50px_-10px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden ring-1 ring-white/10`}>
 
                     {/* Header */}
@@ -138,8 +179,8 @@ export function StudentAI({ modules }: StudentAIProps) {
                         onClick={() => !isMinimized && setIsMinimized(!isMinimized)}
                     >
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center border border-gold-500/30">
-                                <Bot size={24} className="text-gold-400" />
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37]/20 to-[#F4D03F]/20 flex items-center justify-center border border-[#D4AF37]/40">
+                                <Bot size={24} className="text-[#F4D03F]" />
                             </div>
                             <div>
                                 <h3 className="font-bold text-white text-sm">IA Mentor</h3>
@@ -176,8 +217,8 @@ export function StudentAI({ modules }: StudentAIProps) {
                                     >
                                         <div
                                             className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed ${msg.sender === 'user'
-                                                    ? 'bg-gold-500 text-black font-medium rounded-tr-sm'
-                                                    : 'bg-white/10 text-white/90 rounded-tl-sm border border-white/5'
+                                                ? 'bg-gold-500 text-black font-medium rounded-tr-sm'
+                                                : 'bg-white/10 text-white/90 rounded-tl-sm border border-white/5'
                                                 } animate-in fade-in slide-in-from-bottom-2 duration-300`}
                                         >
                                             {/* Simple formatting for bold text */}

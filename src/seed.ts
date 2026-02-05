@@ -53,7 +53,4 @@ export const seedDatabase = async () => {
     }
 };
 
-// Auto-executar se chamado diretamente
-if (import.meta.url === `file://${process.argv[1]}`) {
-    seedDatabase();
-}
+// Retirado o bloco de execução automática via Terminal Node, pois este arquivo roda no browser via Vite.

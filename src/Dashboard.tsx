@@ -1,8 +1,14 @@
 import { useRef, useState, useEffect } from 'react';
-import { LogOut, ArrowLeft, ArrowRight, BookOpen, X, User, Mail, Camera, Trash2, Settings, ShieldCheck } from 'lucide-react';
+import { LogOut, ArrowLeft, ArrowRight, BookOpen, X, User, Mail, Camera, ShieldCheck } from 'lucide-react';
 import { StudentAI } from './components/StudentAI';
 import { Classroom } from './components/Classroom';
 import { db } from './lib/db';
+
+export interface Attachment {
+    id: string;
+    name: string;
+    url: string;
+}
 
 export interface Lesson {
     id: string;
@@ -10,11 +16,12 @@ export interface Lesson {
     description: string;
     videoId?: string;
     thumbnail?: string;
+    attachments?: Attachment[];
 }
 
 export interface Module {
     id: string;
-    title?: string;
+    title: string;
     showTitle?: boolean;
     image: string;
     lessonCount: number;
@@ -22,9 +29,10 @@ export interface Module {
 }
 
 export interface BannerConfig {
-    type: 'image' | 'video';
+    desktopMediaType: 'image' | 'video';
     desktopMediaUrl: string;
-    mobileMediaUrl?: string; // Optional for future
+    mobileMediaType: 'image' | 'video';
+    mobileMediaUrl: string;
     title: string;
     showTitle: boolean;
     description: string;
@@ -43,8 +51,9 @@ interface ModuleCardProps {
     onClick?: () => void;
 }
 
-const ModuleCard = ({ image, lessonCount, title, showTitle, lessons, onClick }: ModuleCardProps) => (
-    <div onClick={onClick} className="flex-none min-w-[calc(100%-2rem)] sm:min-w-[calc(50%-0.75rem)] lg:min-w-[calc(25%-1.125rem)] aspect-[2/3] group relative bg-black-900 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/30 transition-all duration-700 hover:shadow-[0_20px_80px_-20px_rgba(212,175,55,0.15)] hover:-translate-y-2 cursor-pointer snap-start">
+const ModuleCard = ({ image, title, showTitle, lessons, onClick }: ModuleCardProps) => (
+    // Removido lessonCount pois não estava sendo usado (usa-se lessons.length)
+    <div onClick={onClick} className="flex-none w-[180px] sm:w-[200px] lg:w-[220px] 2xl:w-[250px] aspect-[2/3] group relative bg-black-900 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/30 transition-all duration-700 hover:shadow-[0_20px_80px_-20px_rgba(212,175,55,0.15)] hover:-translate-y-2 cursor-pointer snap-start">
         {/* Full Height Image with Cinematic Zoom */}
         <div className="absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors duration-700 z-10" />
@@ -127,11 +136,12 @@ const ProfileModal = ({ isOpen, onClose, name, setName, email, image, setImage, 
             // Salvar no banco
             await db.updateStudentName(email, tempName);
 
-            // Salvar no localStorage
+            // Salvar no localStorage (chave sempre minúscula)
+            const storageKey = `profile_image_${email.toLowerCase().trim()}`;
             if (tempImage) {
-                localStorage.setItem(`profile_image_${email}`, tempImage);
+                localStorage.setItem(storageKey, tempImage);
             } else {
-                localStorage.removeItem(`profile_image_${email}`);
+                localStorage.removeItem(storageKey);
             }
 
             // Atualizar estado global
@@ -268,14 +278,21 @@ const ProfileModal = ({ isOpen, onClose, name, setName, email, image, setImage, 
     );
 };
 
-export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, showWelcomeNotification = false, isAdmin = false, studentEmail = '' }: { onLogout: () => void; modules: Module[]; bannerConfig: BannerConfig; onAdminAccess?: () => void; showWelcomeNotification?: boolean; isAdmin?: boolean; studentEmail?: string }) {
+export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, showWelcomeNotification = false, studentEmail = '' }: { onLogout: () => void; modules: Module[]; bannerConfig: BannerConfig; onAdminAccess?: () => void; showWelcomeNotification?: boolean; studentEmail?: string }) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [userName, setUserName] = useState("");
-    const [userEmail, setUserEmail] = useState("");
-    const [userImage, setUserImage] = useState<string | null>(null);
+    // Initialize with fallback values based on the prop
+    // Initialize with fallback values based on the prop
+    const [userName, setUserName] = useState(() => {
+        const normalizedEmail = studentEmail.toLowerCase().trim();
+        if (normalizedEmail === 'brenooodesena@gmail.com') return "Administrador";
+        return normalizedEmail.split('@')[0] || "Aluno";
+    });
+    const [userEmail, setUserEmail] = useState(studentEmail.toLowerCase().trim());
+    const [userImage, setUserImage] = useState<string | null>(() => {
+        return localStorage.getItem(`profile_image_${studentEmail.toLowerCase().trim()}`);
+    });
     const [showWelcome, setShowWelcome] = useState(showWelcomeNotification);
-    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
 
@@ -290,19 +307,35 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     const student = students.find(s => s.email.toLowerCase() === studentEmail.toLowerCase());
 
                     if (student) {
-                        setUserName(student.name || '');
-                        setUserEmail(student.email || '');
-                        // userImage will be loaded from localStorage or stay null for avatar
-                        const savedImage = localStorage.getItem(`profile_image_${student.email}`);
-                        setUserImage(savedImage);
+                        // Priority 1: Name from Database
+                        if (student.name && student.name !== "Administrador" && student.name !== studentEmail.split('@')[0]) {
+                            setUserName(student.name);
+                        } else if (student.name) {
+                            setUserName(student.name);
+                        }
+
+                        setUserEmail(student.email || studentEmail.toLowerCase());
+
+                        // Priority 2: Image from LocalStorage (with normalized key)
+                        const savedImage = localStorage.getItem(`profile_image_${studentEmail.toLowerCase().trim()}`);
+                        if (savedImage) setUserImage(savedImage);
+
+                    } else {
+                        // Fallback logic for when the database record is missing (e.g. first admin session)
+                        if (studentEmail.toLowerCase() === 'brenooodesena@gmail.com') {
+                            setUserName("Administrador");
+                        } else {
+                            setUserName(studentEmail.split('@')[0] || "Aluno");
+                        }
+                        setUserEmail(studentEmail);
                     }
                 } catch (error) {
                     console.error('Error loading student data:', error);
                 } finally {
-                    setIsLoadingProfile(false);
+                    // removed setIsLoadingProfile
                 }
             } else {
-                setIsLoadingProfile(false);
+                // removed setIsLoadingProfile
             }
         };
 
@@ -407,7 +440,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     <div className="flex items-center gap-6 relative z-50">
                         <div
                             onClick={() => setIsProfileOpen(true)}
-                            className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity group"
+                            className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity group -mt-2"
                         >
                             <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/20 group-hover:border-gold-400/50 transition-colors">
                                 {userImage ? (
@@ -459,39 +492,72 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                 {/* Blocker for pinterest/save/drag if it's an image */}
                 <div className="absolute inset-0 z-20" />
 
-                {bannerConfig.type === 'video' ? (
-                    <div className="w-full h-[85vh] overflow-hidden relative">
-                        <video
+                {/* --- DESKTOP BANNER (Hidden on Mobile) --- */}
+                <div className="hidden md:block">
+                    {bannerConfig.desktopMediaType === 'video' ? (
+                        <div className="w-full h-[85vh] overflow-hidden relative">
+                            <video
+                                src={bannerConfig.desktopMediaUrl}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                className="w-full h-full object-cover mask-image-b"
+                            />
+                        </div>
+                    ) : (
+                        <img
                             src={bannerConfig.desktopMediaUrl}
-                            autoPlay
-                            muted
-                            loop
-                            playsInline
-                            className="w-full h-full object-cover mask-image-b"
+                            alt="Banner Desktop"
+                            className="w-full h-auto object-cover max-h-[85vh] mask-image-b"
+                            data-pin-nopin="true"
+                            onContextMenu={(e) => e.preventDefault()}
+                            draggable={false}
                         />
-                    </div>
-                ) : (
-                    <img
-                        src={bannerConfig.desktopMediaUrl}
-                        alt="Banner"
-                        className="w-full h-auto object-cover max-h-[85vh] mask-image-b"
-                        data-pin-nopin="true"
-                        onContextMenu={(e) => e.preventDefault()}
-                        draggable={false}
-                    />
-                )}
+                    )}
+                </div>
+
+                {/* --- MOBILE BANNER (Visible only on Mobile) --- */}
+                <div className="block md:hidden">
+                    {bannerConfig.mobileMediaType === 'video' ? (
+                        <div className="w-full h-[60vh] overflow-hidden relative">
+                            <video
+                                src={bannerConfig.mobileMediaUrl || bannerConfig.desktopMediaUrl}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                className="w-full h-full object-cover mask-image-b"
+                            />
+                        </div>
+                    ) : (
+                        <img
+                            src={bannerConfig.mobileMediaUrl || bannerConfig.desktopMediaUrl}
+                            alt="Banner Mobile"
+                            className="w-full h-auto object-cover max-h-[60vh] mask-image-b"
+                            data-pin-nopin="true"
+                            onContextMenu={(e) => e.preventDefault()}
+                            draggable={false}
+                        />
+                    )}
+                </div>
             </div>
 
             {/* Modules Slider Section */}
-            <div className="relative z-30 mt-8 px-8 pb-20 bg-black"> {/* Negative margin removed to spacing */}
+            <div className="relative z-30 mt-8 pb-20 bg-black flex justify-center">
 
                 {/* Horizontal Scroll Container */}
-                < div className="relative max-w-[1800px] mx-auto group/slider">
+                {/* 
+                    Calculations for 5 items centered:
+                    lg (220px): 5*220 + 4*24(gap) = 1100 + 96 = 1196px
+                    2xl (250px): 5*250 + 4*24(gap) = 1250 + 96 = 1346px
+                */}
+                <div className="relative w-full lg:max-w-[1196px] 2xl:max-w-[1346px] group/slider px-4 sm:px-0">
                     {/* Left Arrow */}
                     {canScrollLeft && (
                         <button
                             onClick={() => scroll('left')}
-                            className="absolute -left-4 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-gold-500 hover:text-black hover:border-gold-500 transition-all cursor-pointer opacity-0 group-hover/slider:opacity-100 duration-500"
+                            className="absolute left-2 lg:-left-16 top-1/2 -translate-y-1/2 z-40 w-10 h-10 lg:w-12 lg:h-12 rounded-full border border-white/10 bg-black/60 lg:bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-gold-500 hover:text-black hover:border-gold-500 transition-all cursor-pointer opacity-100 lg:opacity-0 lg:group-hover/slider:opacity-100 duration-300 shadow-lg"
                         >
                             <ArrowLeft size={20} />
                         </button>
@@ -501,7 +567,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     {canScrollRight && (
                         <button
                             onClick={() => scroll('right')}
-                            className="absolute -right-4 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-gold-500 hover:text-black hover:border-gold-500 transition-all cursor-pointer opacity-0 group-hover/slider:opacity-100 duration-500"
+                            className="absolute right-2 lg:-right-16 top-1/2 -translate-y-1/2 z-40 w-10 h-10 lg:w-12 lg:h-12 rounded-full border border-white/10 bg-black/60 lg:bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-gold-500 hover:text-black hover:border-gold-500 transition-all cursor-pointer opacity-100 lg:opacity-0 lg:group-hover/slider:opacity-100 duration-300 shadow-lg"
                         >
                             <ArrowRight size={20} />
                         </button>
@@ -510,7 +576,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     <div
                         ref={scrollContainerRef}
                         onScroll={checkScroll}
-                        className="flex gap-6 overflow-x-auto pb-12 pt-4 px-4 scrollbar-hide snap-x scroll-smooth"
+                        className="flex gap-6 overflow-x-auto pb-12 pt-4 px-4 sm:px-0 scrollbar-hide snap-x scroll-smooth"
                     >
                         {modules.map((mod, i) => (
                             <ModuleCard key={i} {...mod} onClick={() => setActiveModuleId(mod.id)} />
@@ -518,6 +584,6 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }
