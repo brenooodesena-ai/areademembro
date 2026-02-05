@@ -5,6 +5,7 @@ import { AdminDashboard } from './AdminDashboard';
 import { db } from './lib/db';
 import { initialModules, initialBannerConfig } from './lib/initialData';
 import './lib/seed'; // Expor seedDatabase no console
+import { createAdminUser } from './seed';
 
 function App() {
   const [view, setView] = useState<'login' | 'dashboard' | 'admin'>('login');
@@ -20,6 +21,9 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Ensure admin user exists
+        createAdminUser();
+
         const modules = await db.getModules();
 
         // MIGRATION CHECK: Detect legacy default data (8 modules, first is "Comece Por Aqui")
