@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 
 import type { BannerConfig, Module, Lesson, Attachment } from './Dashboard';
 import { db, type Student } from './lib/db';
+import { hashPassword } from './lib/auth';
 
 interface AdminDashboardProps {
     bannerConfig: BannerConfig;
@@ -93,6 +94,41 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
     const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Manual Student Registration State
+    const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+    const [newStudentName, setNewStudentName] = useState("");
+    const [newStudentEmail, setNewStudentEmail] = useState("");
+    const [newStudentPassword, setNewStudentPassword] = useState("");
+    const [isAddingStudent, setIsAddingStudent] = useState(false);
+
+    const handleAddStudent = async () => {
+        if (!newStudentName.trim() || !newStudentEmail.trim() || !newStudentPassword.trim()) {
+            alert("Preencha todos os campos.");
+            return;
+        }
+
+        setIsAddingStudent(true);
+        try {
+            const passwordHash = await hashPassword(newStudentPassword);
+            await db.registerStudent(newStudentName, newStudentEmail, passwordHash, 'approved');
+
+            // Refresh logic
+            const updatedStudents = await db.getStudents();
+            setStudentsData(updatedStudents);
+
+            setIsAddStudentModalOpen(false);
+            setNewStudentName("");
+            setNewStudentEmail("");
+            setNewStudentPassword("");
+            alert(`✅ Aluno ${newStudentName} adicionado com sucesso!`);
+        } catch (error) {
+            console.error("Error adding student manually:", error);
+            alert("Erro ao adicionar aluno. Verifique se o email já existe.");
+        } finally {
+            setIsAddingStudent(false);
+        }
+    };
 
     const handleConfirmDeleteStudent = async () => {
         if (!studentToDelete || deleteConfirmationText.toLowerCase() !== 'excluir') return;
@@ -920,6 +956,12 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                     </div>
                                     {isRefreshing ? 'Atualizando...' : 'Atualizar'}
                                 </button>
+                                <button
+                                    onClick={() => setIsAddStudentModalOpen(true)}
+                                    className="text-sm bg-gold-500 text-black px-4 py-2 rounded-lg font-bold hover:bg-gold-400 transition-colors flex items-center gap-2"
+                                >
+                                    <Plus size={14} /> Novo Aluno
+                                </button>
                             </div>
 
                             <div className="space-y-4">
@@ -1492,6 +1534,69 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                     {isDeleting ? 'Excluindo...' : 'Excluir'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ADD STUDENT MODAL */}
+            {isAddStudentModalOpen && (
+                <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-black-900 border border-white/10 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                            <h3 className="text-lg font-bold text-white">Adicionar Novo Aluno</h3>
+                            <button onClick={() => setIsAddStudentModalOpen(false)} className="text-white/60 hover:text-white transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-white/80">Nome Completo</label>
+                                <input
+                                    type="text"
+                                    value={newStudentName}
+                                    onChange={(e) => setNewStudentName(e.target.value)}
+                                    className="w-full bg-black border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-500 outline-none"
+                                    placeholder="Nome do aluno..."
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-white/80">Email</label>
+                                <input
+                                    type="email"
+                                    value={newStudentEmail}
+                                    onChange={(e) => setNewStudentEmail(e.target.value)}
+                                    className="w-full bg-black border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-500 outline-none"
+                                    placeholder="email@exemplo.com..."
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-white/80">Senha Inicial</label>
+                                <input
+                                    type="text"
+                                    value={newStudentPassword}
+                                    onChange={(e) => setNewStudentPassword(e.target.value)}
+                                    className="w-full bg-black border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-500 outline-none"
+                                    placeholder="Senha de acesso..."
+                                />
+                                <p className="text-[10px] text-white/40">O aluno poderá alterar a senha depois.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-3 border-t border-white/10">
+                            <button
+                                onClick={() => setIsAddStudentModalOpen(false)}
+                                className="flex-1 py-2 text-sm font-bold text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleAddStudent}
+                                disabled={isAddingStudent}
+                                className="flex-1 py-2 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-black text-sm font-bold rounded-lg shadow-lg hover:shadow-gold-500/20 transition-all"
+                            >
+                                {isAddingStudent ? 'Salvando...' : 'Adicionar'}
+                            </button>
                         </div>
                     </div>
                 </div>
