@@ -301,7 +301,7 @@ export function Login({ onLogin }: LoginProps) {
                                             placeholder="Seu email principal"
                                             className="input-premium !pl-14 relative"
                                             value={resetEmail}
-                                            onChange={(e) => setResetEmail(e.target.value)}
+                                            onChange={(e) => setResetEmail(e.target.value.toLowerCase())}
                                             required
                                             disabled={isLoading}
                                         />
@@ -393,7 +393,7 @@ export function Login({ onLogin }: LoginProps) {
                                         placeholder="Seu email principal"
                                         className="input-premium !pl-14 relative"
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        onChange={(e) => setEmail(e.target.value.toLowerCase())}
                                         required
                                         disabled={isLoading}
                                     />

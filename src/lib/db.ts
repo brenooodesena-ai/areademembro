@@ -319,7 +319,7 @@ export const db = {
         const { data, error } = await supabase
             .from('students')
             .select('*')
-            .eq('email', email)
+            .ilike('email', email)
             .eq('password_hash', passwordHash)
             .single();
 
@@ -385,7 +385,7 @@ export const db = {
         const { data, error } = await supabase
             .from('students')
             .select('id')
-            .eq('email', email)
+            .ilike('email', email)
             .single();
 
         if (error || !data) return false;
@@ -396,7 +396,7 @@ export const db = {
         const { error } = await supabase
             .from('students')
             .update({ password_hash: passwordHash })
-            .eq('email', email);
+            .ilike('email', email);
 
         if (error) throw error;
     },
