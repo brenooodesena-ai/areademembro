@@ -24,6 +24,8 @@ create table public.students (
   user_id uuid, -- Link to auth.users if needed
   name text,
   email text unique,
+  password_hash text,
+  status text default 'pending' check (status in ('pending', 'approved', 'rejected')),
   progress integer default 0,
   "lastAccess" timestamptz default now()
 );
