@@ -101,24 +101,30 @@ export const db = {
         }
     },
 
-    createModule: async (module: Partial<Module>) => {
-        const docRef = await addDoc(collection(firestore, COLLECTIONS.MODULES), {
-            title: module.title,
-            image: module.image,
+    createModule: async (module: Partial<Module>): Promise<Module> => {
+        const payload = {
+            title: module.title || "Novo Módulo",
+            image: module.image || "",
             showTitle: module.showTitle || false,
             lessonCount: 0,
-            order_index: Date.now() // Simple way to handle ordering initially
-        });
-        return { id: docRef.id, ...module };
+            order_index: Date.now()
+        };
+        const docRef = await addDoc(collection(firestore, COLLECTIONS.MODULES), payload);
+        return { id: docRef.id, ...payload, lessons: [] };
     },
 
     updateModule: async (id: string, updates: Partial<Module>) => {
         const docRef = doc(firestore, COLLECTIONS.MODULES, id);
-        await updateDoc(docRef, {
-            title: updates.title,
-            image: updates.image,
-            showTitle: updates.showTitle
-        });
+        const data: any = {};
+
+        if (updates.title !== undefined) data.title = updates.title;
+        if (updates.image !== undefined) data.image = updates.image;
+        if (updates.showTitle !== undefined) data.showTitle = updates.showTitle;
+        if (updates.order_index !== undefined) data.order_index = updates.order_index;
+
+        if (Object.keys(data).length > 0) {
+            await updateDoc(docRef, data);
+        }
     },
 
     updateModuleOrder: async (modules: Module[]) => {

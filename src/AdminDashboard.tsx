@@ -9,6 +9,7 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import type { BannerConfig, Module, Lesson, Attachment } from './Dashboard';
 import { db, type Student } from './lib/db';
 import { hashPassword } from './lib/auth';
+import { compressImage } from './lib/imageUtils';
 
 interface AdminDashboardProps {
     bannerConfig: BannerConfig;
@@ -156,7 +157,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
             });
 
             if (newModule) {
-                setModules([...modules, { ...newModule, lessons: [] }]);
+                setModules([...modules, newModule]);
             }
             setIsNewModuleModalOpen(false);
         } catch (error) {
@@ -172,20 +173,22 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         if (file) {
             const reader = new FileReader();
             reader.onloadend = async () => {
-                const newImage = reader.result as string;
-
-                // 1. Update State
-                const updatedModules = modules.map(m =>
-                    m.id === moduleId ? { ...m, image: newImage } : m
-                );
-                setModules(updatedModules);
-
-                // 2. Save to DB
                 try {
-                    await db.updateModule(moduleId, { image: newImage });
+                    const base64 = reader.result as string;
+                    // Comprimir antes de salvar
+                    const compressedImage = await compressImage(base64);
+
+                    // 1. Update State
+                    const updatedModules = modules.map(m =>
+                        m.id === moduleId ? { ...m, image: compressedImage } : m
+                    );
+                    setModules(updatedModules);
+
+                    // 2. Save to DB
+                    await db.updateModule(moduleId, { image: compressedImage });
                 } catch (error) {
                     console.error("Error saving module image:", error);
-                    alert("Erro ao salvar a imagem no banco.");
+                    alert("Erro ao salvar a imagem no banco. Verifique o tamanho do arquivo.");
                 }
             };
             reader.readAsDataURL(file);
@@ -655,11 +658,19 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                     const file = e.target.files?.[0];
                                                     if (file) {
                                                         const reader = new FileReader();
-                                                        reader.onloadend = () => setBannerConfig({
-                                                            ...bannerConfig,
-                                                            desktopMediaUrl: reader.result as string,
-                                                            desktopMediaType: 'image'
-                                                        });
+                                                        reader.onloadend = async () => {
+                                                            try {
+                                                                const base64 = reader.result as string;
+                                                                const compressed = await compressImage(base64, 2000, 0.6); // Banner Desktop maior
+                                                                setBannerConfig({
+                                                                    ...bannerConfig,
+                                                                    desktopMediaUrl: compressed,
+                                                                    desktopMediaType: 'image'
+                                                                });
+                                                            } catch (err) {
+                                                                console.error('Error compressing banner:', err);
+                                                            }
+                                                        };
                                                         reader.readAsDataURL(file);
                                                     }
                                                 }}
@@ -743,11 +754,19 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                     const file = e.target.files?.[0];
                                                     if (file) {
                                                         const reader = new FileReader();
-                                                        reader.onloadend = () => setBannerConfig({
-                                                            ...bannerConfig,
-                                                            mobileMediaUrl: reader.result as string,
-                                                            mobileMediaType: 'image'
-                                                        });
+                                                        reader.onloadend = async () => {
+                                                            try {
+                                                                const base64 = reader.result as string;
+                                                                const compressed = await compressImage(base64, 800, 0.7); // Banner Mobile menor
+                                                                setBannerConfig({
+                                                                    ...bannerConfig,
+                                                                    mobileMediaUrl: compressed,
+                                                                    mobileMediaType: 'image'
+                                                                });
+                                                            } catch (err) {
+                                                                console.error('Error compressing mobile banner:', err);
+                                                            }
+                                                        };
                                                         reader.readAsDataURL(file);
                                                     }
                                                 }}
