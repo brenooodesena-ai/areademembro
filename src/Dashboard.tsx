@@ -303,14 +303,11 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
         const loadStudentData = async () => {
             if (studentEmail) {
                 try {
-                    const students = await db.getStudents();
-                    const student = students.find(s => s.email.toLowerCase() === studentEmail.toLowerCase());
+                    const student = await db.getStudentByEmail(studentEmail);
 
                     if (student) {
                         // Priority 1: Name from Database
-                        if (student.name && student.name !== "Administrador" && student.name !== studentEmail.split('@')[0]) {
-                            setUserName(student.name);
-                        } else if (student.name) {
+                        if (student.name) {
                             setUserName(student.name);
                         }
 
@@ -321,7 +318,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                         if (savedImage) setUserImage(savedImage);
 
                     } else {
-                        // Fallback logic for when the database record is missing (e.g. first admin session)
+                        // Fallback logic for when the database record is missing
                         if (studentEmail.toLowerCase() === 'brenooodesena@gmail.com') {
                             setUserName("Administrador");
                         } else {
@@ -331,11 +328,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     }
                 } catch (error) {
                     console.error('Error loading student data:', error);
-                } finally {
-                    // removed setIsLoadingProfile
                 }
-            } else {
-                // removed setIsLoadingProfile
             }
         };
 

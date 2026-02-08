@@ -20,50 +20,27 @@ function App() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Ensure admin user exists (background)
+      createAdminUser();
+
       try {
-        // Ensure admin user exists
-        createAdminUser();
+        // Fetch modules and banner in parallel
+        const [modules, banner] = await Promise.all([
+          db.getModules(),
+          db.getBannerConfig()
+        ]);
 
-        const modules = await db.getModules();
-
-        // MIGRATION CHECK: Detect legacy default data (8 modules, first is "Comece Por Aqui")
-        // If detected, force use of new 16-module curriculum.
+        // MIGRATION CHECK: Detect legacy default data
         const isLegacyData = modules && modules.length === 8 && modules[0].title === 'Comece Por Aqui';
 
         if (modules && modules.length > 0 && !isLegacyData) {
           setAppModules(modules);
-          console.log("✅ Módulos carregados do Supabase:", modules.length);
+          console.log("✅ Módulos carregados do Firestore:", modules.length);
         } else {
-          console.log("⚠️ Banco vazio ou dados antigos detectados. Migrando para novo curriculum...");
-
-          // 1. Update Local State immediately for UX
+          console.log("⚠️ Banco vazio ou dados antigos detectados. Usando curriculum padrão.");
           setAppModules(initialModules);
-
-          // 2. Sync to Database (Background)
-          // We map initialModules to remove 'id' so Supabase generates valid UUIDs if needed,
-          // OR we assume text IDs. Safe bet: Let DB handle creation or update if IDs match.
-          // Since it's a migration, we'll try to wipe and recreate or upsert.
-          // Simplest safe approach: Upsert active modules.
-
-          const syncMigration = async () => {
-            // We can't batch upsert easily with different IDs/Structures in this mocked db layer
-            // So we will try to save them.
-            // Ideally this should be a proper backend migration.
-            console.log("🔄 Iniciando sincronização da migração...");
-            // No-op here because we don't want to loop nuke the DB in the client by mistake.
-            // Users should use "Save" in admin or we rely on them navigating to Admin to trigger saves?
-            // No, the user reported "Error saving image". This happens because valid rows don't exist.
-            // We MUST create them.
-
-            // Quick fix: Try to create them if they don't exist.
-            // Warning: This might duplicate if logic is flawed.
-            // Better strategy: We let the user know they are in "Preview Mode" until they save?
-            // Or we just accept that '1', '2' IDs are failing.
-          };
-          syncMigration();
         }
 
-        const banner = await db.getBannerConfig();
         if (banner) {
           setBannerConfig(banner);
         }
@@ -105,7 +82,7 @@ function App() {
     setView('login');
   };
 
-  if (isLoading) {
+  if (isLoading && view !== 'login') {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">

@@ -1,4 +1,17 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { db as firestore } from './firebase';
+import {
+    collection,
+    getDocs,
+    getDoc,
+    setDoc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    query,
+    where,
+    orderBy,
+} from 'firebase/firestore';
 
 export interface Attachment {
     id: string;
@@ -41,400 +54,311 @@ export interface Student {
     approved_by?: string;
 }
 
-// Offline storage fallback
-const STORAGE_KEY = 'area_membros_offline_db';
-
-const offlineStorage = {
-    getData: () => {
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : { modules: [], students: [], accessLogs: [], bannerConfig: null };
-    },
-    saveData: (data: any) => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
+// Collections Names
+const COLLECTIONS = {
+    MODULES: 'modules',
+    LESSONS: 'lessons',
+    STUDENTS: 'students',
+    ACCESS_LOGS: 'access_logs',
+    APP_SETTINGS: 'app_settings'
 };
 
 export const db = {
     // --- MODULES ---
     getModules: async (): Promise<Module[]> => {
-        if (!isSupabaseConfigured) {
-            const data = offlineStorage.getData();
-            return data.modules || [];
-        }
-
         try {
-            const { data: modules, error } = await supabase
-                .from('modules')
-                .select('*')
-                .order('order_index', { ascending: true });
+            const modulesQuery = query(collection(firestore, COLLECTIONS.MODULES), orderBy('order_index', 'asc'));
+            const modulesSnap = await getDocs(modulesQuery);
+            const modulesList = modulesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 
-            if (error) {
-                console.error('Error fetching modules:', error);
-                return [];
-            }
+            if (modulesList.length === 0) return [];
 
-            if (!modules) return [];
-
-            // Fetch lessons for all modules
-            const { data: lessons, error: lessonError } = await supabase
-                .from('lessons')
-                .select('*')
-                .order('order_index', { ascending: true });
-
-            if (lessonError) {
-                console.error('Error fetching lessons:', lessonError);
-            }
-
+            // Fetch all lessons
+            const lessonsSnap = await getDocs(query(collection(firestore, COLLECTIONS.LESSONS), orderBy('order_index', 'asc')));
             const lessonMap = new Map<string, Lesson[]>();
-            lessons?.forEach((l: any) => {
+
+            lessonsSnap.docs.forEach(d => {
+                const l = { id: d.id, ...d.data() } as any;
                 if (!lessonMap.has(l.module_id)) {
                     lessonMap.set(l.module_id, []);
                 }
-                lessonMap.get(l.module_id)?.push({
-                    id: l.id,
-                    title: l.title,
-                    description: l.description,
-                    videoId: l.videoId,
-                    module_id: l.module_id
-                });
+                lessonMap.get(l.module_id)?.push(l);
             });
 
-            return modules.map((m: any) => ({
+            return modulesList.map((m: any) => ({
                 id: m.id,
                 title: m.title,
                 showTitle: m.showTitle,
                 image: m.image,
-                lessonCount: m.lessonCount,
-                lessons: lessonMap.get(m.id) || []
+                lessonCount: m.lessonCount || 0,
+                lessons: lessonMap.get(m.id) || [],
+                order_index: m.order_index
             }));
-        } catch (error) {
-            console.error('Supabase error, using offline mode:', error);
-            const data = offlineStorage.getData();
-            return data.modules || [];
+        } catch (error: any) {
+            console.error('Firestore Error (Modules):', error);
+            // Se for erro de offline, o App.tsx já está preparado para usar initialModules
+            throw error;
         }
     },
 
     createModule: async (module: Partial<Module>) => {
-        const { data, error } = await supabase
-            .from('modules')
-            .insert([{
-                title: module.title,
-                image: module.image,
-                "showTitle": module.showTitle,
-                "lessonCount": 0
-            }])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
+        const docRef = await addDoc(collection(firestore, COLLECTIONS.MODULES), {
+            title: module.title,
+            image: module.image,
+            showTitle: module.showTitle || false,
+            lessonCount: 0,
+            order_index: Date.now() // Simple way to handle ordering initially
+        });
+        return { id: docRef.id, ...module };
     },
 
     updateModule: async (id: string, updates: Partial<Module>) => {
-        const { error } = await supabase
-            .from('modules')
-            .update({
-                title: updates.title,
-                image: updates.image,
-                "showTitle": updates.showTitle
-            })
-            .eq('id', id);
-
-        if (error) throw error;
+        const docRef = doc(firestore, COLLECTIONS.MODULES, id);
+        await updateDoc(docRef, {
+            title: updates.title,
+            image: updates.image,
+            showTitle: updates.showTitle
+        });
     },
 
     updateModuleOrder: async (modules: Module[]) => {
-        // Iterate and update order_index for each module
         for (let i = 0; i < modules.length; i++) {
-            const { error } = await supabase
-                .from('modules')
-                .update({ order_index: i })
-                .eq('id', modules[i].id);
-
-            if (error) {
-                console.error(`Error updating order for module ${modules[i].id}:`, error);
-            }
+            const docRef = doc(firestore, COLLECTIONS.MODULES, modules[i].id);
+            await updateDoc(docRef, { order_index: i });
         }
     },
 
     syncModule: async (module: Module) => {
         // 1. Update Module Info
-        const { error: modError } = await supabase
-            .from('modules')
-            .update({
-                title: module.title,
-                "showTitle": module.showTitle,
-                image: module.image,
-                "lessonCount": module.lessons.length
-            })
-            .eq('id', module.id);
-
-        if (modError) throw modError;
+        const modRef = doc(firestore, COLLECTIONS.MODULES, module.id);
+        await updateDoc(modRef, {
+            title: module.title,
+            showTitle: module.showTitle,
+            image: module.image,
+            lessonCount: module.lessons.length
+        });
 
         // 2. Sync Lessons
-        // Get existing IDs
-        const { data: existing } = await supabase
-            .from('lessons')
-            .select('id')
-            .eq('module_id', module.id);
+        const lessonsQuery = query(collection(firestore, COLLECTIONS.LESSONS), where('module_id', '==', module.id));
+        const existingSnap = await getDocs(lessonsQuery);
+        const existingIds = existingSnap.docs.map(d => d.id);
 
-        const existingIds = existing?.map(x => x.id) || [];
-        // Filter out temp IDs (numeric timestamps) for deletion check
-        const currentRealIds = module.lessons.filter(l => l.id.includes('-')).map(l => l.id);
+        const currentRealIds = module.lessons.filter(l => !(/^\d+$/.test(l.id))).map(l => l.id);
 
         // Delete removed
         const toDelete = existingIds.filter(id => !currentRealIds.includes(id));
-        if (toDelete.length > 0) {
-            await supabase.from('lessons').delete().in('id', toDelete);
+        for (const id of toDelete) {
+            await deleteDoc(doc(firestore, COLLECTIONS.LESSONS, id));
         }
 
         // Upsert
         for (let i = 0; i < module.lessons.length; i++) {
             const l = module.lessons[i];
-            // Temp IDs are usually numeric strings (Date.now)
-            const isTemp = !l.id.includes('-');
+            const isTemp = /^\d+$/.test(l.id);
 
             const payload = {
                 module_id: module.id,
                 title: l.title,
                 description: l.description,
-                "videoId": l.videoId,
+                videoId: l.videoId || "",
                 order_index: i
             };
 
             if (isTemp) {
-                await supabase.from('lessons').insert(payload);
+                await addDoc(collection(firestore, COLLECTIONS.LESSONS), payload);
             } else {
-                await supabase.from('lessons').update(payload).eq('id', l.id);
+                await setDoc(doc(firestore, COLLECTIONS.LESSONS, l.id), payload, { merge: true });
             }
         }
     },
 
     deleteModule: async (id: string) => {
-        const { error } = await supabase
-            .from('modules')
-            .delete()
-            .eq('id', id);
-        if (error) throw error;
+        await deleteDoc(doc(firestore, COLLECTIONS.MODULES, id));
+        // Also delete associated lessons
+        const lessonsQuery = query(collection(firestore, COLLECTIONS.LESSONS), where('module_id', '==', id));
+        const snap = await getDocs(lessonsQuery);
+        for (const d of snap.docs) {
+            await deleteDoc(d.ref);
+        }
     },
 
     // --- LESSONS ---
     saveLesson: async (moduleId: string, lesson: Lesson) => {
-        // If ID is numeric timestamp (mock), remove it so Supabase generates UUID
-        // Or if it's a real update, use it.
-        const isNew = !lesson.id || !lesson.id.includes('-');
+        const isNew = !lesson.id || /^\d+$/.test(lesson.id);
 
         const payload = {
             module_id: moduleId,
             title: lesson.title,
-            description: lesson.description,
-            "videoId": lesson.videoId
+            description: lesson.description || "",
+            videoId: lesson.videoId || ""
         };
 
         if (isNew) {
-            const { data, error } = await supabase
-                .from('lessons')
-                .insert([payload])
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
+            const docRef = await addDoc(collection(firestore, COLLECTIONS.LESSONS), payload);
+            return { id: docRef.id, ...payload };
         } else {
-            const { data, error } = await supabase
-                .from('lessons')
-                .update(payload)
-                .eq('id', lesson.id)
-                .select()
-                .single();
-            if (error) throw error;
-            return data;
+            const docRef = doc(firestore, COLLECTIONS.LESSONS, lesson.id);
+            await setDoc(docRef, payload, { merge: true });
+            return { id: lesson.id, ...payload };
         }
     },
 
     deleteLesson: async (lessonId: string) => {
-        const { error } = await supabase
-            .from('lessons')
-            .delete()
-            .eq('id', lessonId);
-        if (error) throw error;
+        await deleteDoc(doc(firestore, COLLECTIONS.LESSONS, lessonId));
     },
 
     // --- STUDENTS ---
     saveStudent: async (name: string, email: string) => {
-        // Upsert student
-        const { data, error } = await supabase
-            .from('students')
-            .upsert({ email, name, lastAccess: new Date().toISOString() }, { onConflict: 'email' })
-            .select()
-            .single();
+        const studentsQuery = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const snap = await getDocs(studentsQuery);
 
-        if (error) {
-            console.error("Error saving student:", error);
-            return null;
+        const payload = {
+            name,
+            email: email.toLowerCase(),
+            lastAccess: new Date().toISOString()
+        };
+
+        let studentId: string;
+        if (snap.empty) {
+            const docRef = await addDoc(collection(firestore, COLLECTIONS.STUDENTS), {
+                ...payload,
+                status: 'pending',
+                progress: 0,
+                created_at: new Date().toISOString()
+            });
+            studentId = docRef.id;
+        } else {
+            studentId = snap.docs[0].id;
+            await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, studentId), payload);
         }
 
         // Log access
-        await supabase.from('access_logs').insert({ student_id: data.id });
+        await addDoc(collection(firestore, COLLECTIONS.ACCESS_LOGS), {
+            student_id: studentId,
+            access_time: new Date().toISOString()
+        });
 
-        return data;
+        return { id: studentId, ...payload };
     },
 
     getStudents: async (): Promise<Student[]> => {
-        const { data, error } = await supabase.from('students').select('*');
-        if (error) return [];
-        return data.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            email: s.email,
-            password_hash: s.password_hash,
-            status: s.status || 'pending',
-            progress: s.progress || 0,
-            lastAccess: s.lastAccess,
-            created_at: s.created_at,
-            approved_at: s.approved_at,
-            approved_by: s.approved_by
-        }));
+        const snap = await getDocs(collection(firestore, COLLECTIONS.STUDENTS));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+    },
+
+    getStudentByEmail: async (email: string): Promise<Student | null> => {
+        try {
+            const q = query(
+                collection(firestore, COLLECTIONS.STUDENTS),
+                where('email', '==', email.toLowerCase().trim())
+            );
+            const snap = await getDocs(q);
+            if (snap.empty) return null;
+            return { id: snap.docs[0].id, ...snap.docs[0].data() } as Student;
+        } catch (error) {
+            console.error('Error fetching student:', error);
+            return null;
+        }
     },
 
     // --- AUTHENTICATION ---
     registerStudent: async (name: string, email: string, passwordHash: string, status: 'pending' | 'approved' = 'pending') => {
-        const { data, error } = await supabase
-            .from('students')
-            .insert({
-                name,
-                email,
-                password_hash: passwordHash,
-                status: status,
-                progress: 0,
-                lastAccess: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
+        const docRef = await addDoc(collection(firestore, COLLECTIONS.STUDENTS), {
+            name,
+            email: email.toLowerCase(),
+            password_hash: passwordHash,
+            status,
+            progress: 0,
+            lastAccess: new Date().toISOString(),
+            created_at: new Date().toISOString()
+        });
+        return { id: docRef.id, name, email, status };
     },
 
     loginStudent: async (email: string, passwordHash: string) => {
-        const { data, error } = await supabase
-            .from('students')
-            .select('*')
-            .ilike('email', email)
-            .eq('password_hash', passwordHash)
-            .single();
+        const studentsQuery = query(
+            collection(firestore, COLLECTIONS.STUDENTS),
+            where('email', '==', email.toLowerCase()),
+            where('password_hash', '==', passwordHash)
+        );
+        const snap = await getDocs(studentsQuery);
 
-        if (error) return null;
+        if (snap.empty) return null;
 
-        // Checar se foi aprovado
+        const data = { id: snap.docs[0].id, ...snap.docs[0].data() } as any;
+
         if (data.status !== 'approved') {
             return { ...data, loginError: data.status === 'pending' ? 'pending' : 'rejected' };
         }
 
-        // Log access
-        await supabase.from('access_logs').insert({ student_id: data.id });
+        // BACKGROUND TASKS (Non-blocking)
+        // 1. Log access
+        addDoc(collection(firestore, COLLECTIONS.ACCESS_LOGS), {
+            student_id: data.id,
+            access_time: new Date().toISOString()
+        }).catch(err => console.error('Error logging access:', err));
 
-        // Update last access
-        await supabase
-            .from('students')
-            .update({ lastAccess: new Date().toISOString() })
-            .eq('id', data.id);
+        // 2. Update last access
+        updateDoc(doc(firestore, COLLECTIONS.STUDENTS, data.id), {
+            lastAccess: new Date().toISOString()
+        }).catch(err => console.error('Error updating last access:', err));
 
         return data;
     },
 
     approveStudent: async (studentId: string, adminId?: string) => {
-        const { error } = await supabase
-            .from('students')
-            .update({
-                status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by: adminId
-            })
-            .eq('id', studentId);
-
-        if (error) throw error;
+        await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, studentId), {
+            status: 'approved',
+            approved_at: new Date().toISOString(),
+            approved_by: adminId || 'admin'
+        });
     },
 
     rejectStudent: async (studentId: string) => {
-        const { error } = await supabase
-            .from('students')
-            .update({ status: 'rejected' })
-            .eq('id', studentId);
-
-        if (error) throw error;
+        await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, studentId), {
+            status: 'rejected'
+        });
     },
 
     deleteStudent: async (studentId: string) => {
-        const { error } = await supabase
-            .from('students')
-            .delete()
-            .eq('id', studentId);
-
-        if (error) throw error;
+        await deleteDoc(doc(firestore, COLLECTIONS.STUDENTS, studentId));
     },
 
     updateStudentName: async (email: string, newName: string) => {
-        const { error } = await supabase
-            .from('students')
-            .upsert({ email, name: newName }, { onConflict: 'email' });
-
-        if (error) throw error;
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, snap.docs[0].id), { name: newName });
+        }
     },
 
     checkEmailExists: async (email: string) => {
-        const { data, error } = await supabase
-            .from('students')
-            .select('id')
-            .ilike('email', email)
-            .single();
-
-        if (error) {
-            console.error('SUPABASE CHECK EMAIL ERROR:', error);
-            // Ignore 'Row not found' error (code PGRST116) as it just means email doesn't exist
-            if (error.code === 'PGRST116') return false;
-            // For other errors, we might want to throw or return false. 
-            // Returning false for connection error is risky as user thinks email is wrong.
-            // Let's log it clearly.
-            return false;
-        }
-
-        return !!data;
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const snap = await getDocs(q);
+        return !snap.empty;
     },
 
     updatePassword: async (email: string, passwordHash: string) => {
-        const { error } = await supabase
-            .from('students')
-            .update({ password_hash: passwordHash })
-            .ilike('email', email);
-
-        if (error) throw error;
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, snap.docs[0].id), { password_hash: passwordHash });
+        }
     },
 
     updateProgress: async (studentId: string, progress: number) => {
-        const { error } = await supabase
-            .from('students')
-            .update({ progress: Math.min(100, Math.max(0, progress)) })
-            .eq('id', studentId);
-
-        if (error) console.error("Error updating progress:", error);
+        await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, studentId), {
+            progress: Math.min(100, Math.max(0, progress))
+        });
     },
 
     getHeatmapData: async () => {
-        // Fetch logs from last 7 days? For now fetch all to simulate the storage logic
-        const { data: logs, error } = await supabase
-            .from('access_logs')
-            .select('access_time');
-
-        if (error || !logs) return Array(7).fill(0).map(() => Array(24).fill(0));
-
+        const snap = await getDocs(collection(firestore, COLLECTIONS.ACCESS_LOGS));
         const heatmap = Array(7).fill(0).map(() => Array(24).fill(0));
 
-        logs.forEach((log: any) => {
+        snap.docs.forEach((d: any) => {
+            const log = d.data();
             const date = new Date(log.access_time);
-            // Adjust for local day (0=Sunday to 6=Saturday) -> We mapped Mon-Sun in UI
-            // UI map: Seg(0), Ter(1), ... Dom(6)
-            // JS getDay(): Sun(0), Mon(1) ... Sat(6)
-            // Adjustment: (day + 6) % 7 to make Mon=0, Sun=6
             const dayIndex = (date.getDay() + 6) % 7;
             const hourIndex = date.getHours();
             heatmap[dayIndex][hourIndex]++;
@@ -445,21 +369,14 @@ export const db = {
 
     // --- SETTINGS (Banner) ---
     getBannerConfig: async () => {
-        const { data, error } = await supabase
-            .from('app_settings')
-            .select('value')
-            .eq('key', 'banner_config')
-            .single();
-
-        if (error || !data) return null;
-        return data.value;
+        const docRef = doc(firestore, COLLECTIONS.APP_SETTINGS, 'banner_config');
+        const snap = await getDoc(docRef);
+        if (!snap.exists()) return null;
+        return snap.data().value;
     },
 
     saveBannerConfig: async (config: any) => {
-        const { error } = await supabase
-            .from('app_settings')
-            .upsert({ key: 'banner_config', value: config });
-
-        if (error) throw error;
+        const docRef = doc(firestore, COLLECTIONS.APP_SETTINGS, 'banner_config');
+        await setDoc(docRef, { value: config }, { merge: true });
     }
 };

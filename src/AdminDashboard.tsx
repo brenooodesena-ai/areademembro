@@ -3,7 +3,8 @@ import { ArrowLeft, Plus, Image as ImageIcon, Users, Link as LinkIcon, Trash2, E
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { supabase, isSupabaseConfigured } from './lib/supabase';
+import { db as firestore } from './lib/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 
 import type { BannerConfig, Module, Lesson, Attachment } from './Dashboard';
 import { db, type Student } from './lib/db';
@@ -37,29 +38,15 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         }
     }, [activeTab]);
 
-    // Real-time Subscription
+    // Real-time Subscription (Firestore)
     useEffect(() => {
-        if (!isSupabaseConfigured) return;
+        const q = query(collection(firestore, 'students'));
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+            const students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+            setStudentsData(students);
+        });
 
-        const channel = supabase
-            .channel('students-db-changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'students',
-                },
-                async () => {
-                    const students = await db.getStudents();
-                    setStudentsData(students);
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => unsubscribe();
     }, []);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -1161,7 +1148,8 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                             <div className="border-t border-white/10 pt-6">
                                 <h4 className="font-bold mb-4">Configuração de Webhook</h4>
                                 <div className="bg-black-900 rounded-lg p-4 font-mono text-sm text-white/60 break-all select-all cursor-pointer hover:bg-black-800 transition-colors border border-white/5">
-                                    https://hxhmgxaacessovzftoby.supabase.co/functions/v1/kiwify-webhook
+                                    {/* Webhook URL for Kiwify Integration (Migration to Firebase in progress) */}
+                                    No Kiwify: Use o seu endpoint de webhook configurado.
                                 </div>
                                 <p className="text-white/30 text-xs mt-2">Configure este URL na Kiwify ou Cakto. Certifique-se de ter adicionado a "RESEND_API_KEY" nos Secrets do Supabase.</p>
                             </div>
