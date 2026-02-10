@@ -3,7 +3,6 @@ import { LogOut, ArrowLeft, ArrowRight, BookOpen, X, User, Mail, Camera, ShieldC
 import { StudentAI } from './components/StudentAI';
 import { Classroom } from './components/Classroom';
 import { db } from './lib/db';
-import { hashPassword } from './lib/auth';
 
 export interface Attachment {
     id: string;

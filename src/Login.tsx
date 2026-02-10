@@ -88,22 +88,6 @@ export function Login({ onLogin }: LoginProps) {
                 // BYPASS DE EMERGÊNCIA: Garantir acesso do admin independente do banco de dados
                 let student = await db.loginStudent(email.trim(), passwordHash);
 
-                // Se o login falhou no banco, mas é o admin com a senha correta, permitir acesso
-                const isAdminEmail = email.trim().toLowerCase() === 'brenooodesena@gmail.com';
-
-                // Fallback final: Mock de emergência se o DB falhar
-                if (!student && isAdminEmail && password === 'admin123') {
-                    console.log('🔑 Acesso de emergência (Mock) liberado para admin');
-                    student = {
-                        id: 'admin-emergency-id',
-                        name: 'Administrador (Modo Emergência)',
-                        email: 'brenooodesena@gmail.com',
-                        status: 'approved',
-                        progress: 0,
-                        lastAccess: new Date().toISOString()
-                    } as any;
-                }
-
                 if (!student) {
                     setMessage({ type: 'error', text: 'Email ou senha incorretos.' });
                     return;
