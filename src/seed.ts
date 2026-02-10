@@ -50,15 +50,13 @@ export const createAdminUser = async () => {
         const exists = await db.checkEmailExists(adminEmail);
 
         if (exists) {
-            // Atualizar senha se já existir
-            console.log('🔄 Atualizando senha do administrador no Firestore...');
-            await db.updatePassword(adminEmail, passwordHash);
+            console.log('✅ Usuário administrador já existe no Firestore.');
         } else {
             // Criar novo se não existir
             console.log('✨ Criando usuário administrador no Firestore...');
             await db.registerStudent('Administrador', adminEmail, passwordHash, 'approved');
+            console.log('✅ Acesso de administrador inicial configurado: brenooodesena@gmail.com / admin123');
         }
-        console.log('✅ Acesso de administrador configurado: brenooodesena@gmail.com / admin123');
     } catch (error) {
         console.error('Erro ao configurar administrador no Firebase:', error);
     }
