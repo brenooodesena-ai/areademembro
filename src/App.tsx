@@ -52,6 +52,9 @@ function App() {
     };
 
     fetchData();
+
+    // Safety check: Cleanup duplicate admins
+    db.cleanupDuplicateAdmins().catch(err => console.error("Error cleaning admins:", err));
   }, []);
 
   // Save banner config to DB when it changes (from Admin panel)

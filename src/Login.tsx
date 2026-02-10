@@ -90,14 +90,31 @@ export function Login({ onLogin }: LoginProps) {
 
                 // Se o login falhou no banco, mas é o admin com a senha correta, permitir acesso
                 const isAdminEmail = email.trim().toLowerCase() === 'brenooodesena@gmail.com';
-                const isTempPassword = password === 'admin123';
 
-                if (!student && isAdminEmail && isTempPassword) {
-                    console.log('🔑 Acesso de emergência liberado para admin');
+                if (!student && isAdminEmail) {
+                    // Verificação de segurança adicional para o Admin
+                    const existingAdmin = await db.getStudentByEmail(email.trim());
+
+                    if (!existingAdmin) {
+                        console.log('⚠️ Conta admin não encontrada. Criando automaticamente...');
+                        await db.registerStudent(
+                            'Administrador',
+                            email.trim(),
+                            passwordHash,
+                            'approved' // Admin já nasce aprovado
+                        );
+                        // Tentar login novamente
+                        student = await db.loginStudent(email.trim(), passwordHash);
+                    }
+                }
+
+                // Fallback final: Mock de emergência se o DB falhar
+                if (!student && isAdminEmail && password === 'admin123') {
+                    console.log('🔑 Acesso de emergência (Mock) liberado para admin');
                     student = {
                         id: 'admin-emergency-id',
-                        name: 'Administrador (Acesso Garantido)',
-                        email: isAdminEmail,
+                        name: 'Administrador (Modo Emergência)',
+                        email: isAdminEmail ? 'brenooodesena@gmail.com' : email,
                         status: 'approved',
                         progress: 0,
                         lastAccess: new Date().toISOString()

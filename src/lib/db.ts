@@ -269,6 +269,16 @@ export const db = {
 
     // --- AUTHENTICATION ---
     registerStudent: async (name: string, email: string, passwordHash: string, status: 'pending' | 'approved' = 'pending') => {
+        // Prevent duplicates at registration level
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            console.warn(`User ${email} already exists. Skipping registration.`);
+            // If manual registration of existing user, maybe update? For now, just return existing.
+            return { id: snap.docs[0].id, ...snap.docs[0].data() } as any;
+        }
+
         const docRef = await addDoc(collection(firestore, COLLECTIONS.STUDENTS), {
             name,
             email: email.toLowerCase(),
@@ -281,7 +291,29 @@ export const db = {
         return { id: docRef.id, name, email, status };
     },
 
+    cleanupDuplicateAdmins: async () => {
+        const email = 'brenooodesena@gmail.com';
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email));
+        const snap = await getDocs(q);
+
+        if (snap.size > 1) {
+            console.log(`Found ${snap.size} admin accounts. Cleaning up duplicates...`);
+            // Sort by lastAccess (descending) to keep the most active one
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+            docs.sort((a, b) => new Date(b.lastAccess || 0).getTime() - new Date(a.lastAccess || 0).getTime());
+
+            const [toKeep, ...toDelete] = docs;
+            console.log(`Keeping admin with ID: ${toKeep.id}`);
+
+            for (const docToDelete of toDelete) {
+                console.log(`Deleting duplicate admin ID: ${docToDelete.id}`);
+                await deleteDoc(doc(firestore, COLLECTIONS.STUDENTS, docToDelete.id));
+            }
+        }
+    },
+
     loginStudent: async (email: string, passwordHash: string) => {
+        console.log(`[DB] Tentando login para: ${email}`);
         const studentsQuery = query(
             collection(firestore, COLLECTIONS.STUDENTS),
             where('email', '==', email.toLowerCase()),
@@ -289,9 +321,13 @@ export const db = {
         );
         const snap = await getDocs(studentsQuery);
 
-        if (snap.empty) return null;
+        if (snap.empty) {
+            console.log(`[DB] Login falhou. Usuário não encontrado ou senha incorreta.`);
+            return null;
+        }
 
         const data = { id: snap.docs[0].id, ...snap.docs[0].data() } as any;
+        console.log(`[DB] Login sucesso para ID: ${data.id}`);
 
         if (data.status !== 'approved') {
             return { ...data, loginError: data.status === 'pending' ? 'pending' : 'rejected' };
@@ -345,10 +381,17 @@ export const db = {
     },
 
     updatePassword: async (email: string, passwordHash: string) => {
+        console.log(`[DB] Atualizando senha para: ${email}`);
         const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
         const snap = await getDocs(q);
         if (!snap.empty) {
-            await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, snap.docs[0].id), { password_hash: passwordHash });
+            // Update ALL matching docs to ensure consistency (fix for duplicates)
+            for (const d of snap.docs) {
+                await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, d.id), { password_hash: passwordHash });
+                console.log(`[DB] Senha atualizada no doc: ${d.id}`);
+            }
+        } else {
+            console.warn(`[DB] Falha ao atualizar senha. Email não encontrado: ${email}`);
         }
     },
 
