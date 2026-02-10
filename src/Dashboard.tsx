@@ -104,16 +104,12 @@ const ProfileModal = ({ isOpen, onClose, name, setName, email, image, setImage, 
     // Estados locais temporários
     const [tempName, setTempName] = useState(name);
     const [tempImage, setTempImage] = useState<string | null>(image);
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
 
     // Sincronizar quando abrir
     useEffect(() => {
         if (isOpen) {
             setTempName(name);
             setTempImage(image);
-            setNewPassword("");
-            setConfirmPassword("");
         }
     }, [isOpen, name, image]);
 
@@ -136,23 +132,12 @@ const ProfileModal = ({ isOpen, onClose, name, setName, email, image, setImage, 
     };
 
     const handleSave = async () => {
-        if (newPassword && newPassword !== confirmPassword) {
-            alert('As senhas não coincidem.');
-            return;
-        }
-
         setIsSaving(true);
         try {
             // 1. Atualizar Nome
             await db.updateStudentName(email, tempName);
 
-            // 2. Atualizar Senha (se houver)
-            if (newPassword) {
-                const passwordHash = await hashPassword(newPassword);
-                await db.updatePassword(email, passwordHash);
-            }
-
-            // 3. Salvar Imagem no localStorage (chave sempre minúscula)
+            // 2. Salvar Imagem no localStorage (chave sempre minúscula)
             const storageKey = `profile_image_${email.toLowerCase().trim()}`;
             if (tempImage) {
                 localStorage.setItem(storageKey, tempImage);
@@ -256,28 +241,15 @@ const ProfileModal = ({ isOpen, onClose, name, setName, email, image, setImage, 
                             </div>
                         </div>
 
-                        <div className="space-y-4 pt-4 border-t border-white/5">
-                            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest pl-1">Alterar Senha (Opcional)</label>
-
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest pl-1">Email</label>
                             <div className="relative group">
-                                <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-gold-400 transition-colors" size={18} />
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
                                 <input
-                                    type="password"
-                                    placeholder="Nova senha"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/5 rounded-xl pl-12 pr-4 py-4 text-white placeholder-white/20 focus:border-gold-400/50 focus:bg-white/10 focus:outline-none transition-all text-sm font-medium"
-                                />
-                            </div>
-
-                            <div className="relative group">
-                                <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-gold-400 transition-colors" size={18} />
-                                <input
-                                    type="password"
-                                    placeholder="Confirmar nova senha"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/5 rounded-xl pl-12 pr-4 py-4 text-white placeholder-white/20 focus:border-gold-400/50 focus:bg-white/10 focus:outline-none transition-all text-sm font-medium"
+                                    type="email"
+                                    value={email}
+                                    disabled
+                                    className="w-full bg-white/5 border border-white/5 rounded-xl pl-12 pr-4 py-4 text-white/40 cursor-not-allowed text-sm font-medium"
                                 />
                             </div>
                         </div>
