@@ -5,7 +5,6 @@ import { AdminDashboard } from './AdminDashboard';
 import { db } from './lib/db';
 import { initialModules, initialBannerConfig } from './lib/initialData';
 import './lib/seed'; // Expor seedDatabase no console
-import { createAdminUser } from './seed';
 
 function App() {
   const [view, setView] = useState<'login' | 'dashboard' | 'admin'>('login');
@@ -20,8 +19,8 @@ function App() {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Ensure admin user exists (background)
-      createAdminUser();
+      // 1. Super Cleanup: Garantir que não existam contas duplicadas ou mal formatadas
+      await db.cleanupDuplicateAdmins();
 
       try {
         // Fetch modules and banner in parallel

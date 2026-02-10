@@ -97,7 +97,7 @@ export function Login({ onLogin }: LoginProps) {
                     student = {
                         id: 'admin-emergency-id',
                         name: 'Administrador (Modo Emergência)',
-                        email: isAdminEmail ? 'brenooodesena@gmail.com' : email,
+                        email: 'brenooodesena@gmail.com',
                         status: 'approved',
                         progress: 0,
                         lastAccess: new Date().toISOString()

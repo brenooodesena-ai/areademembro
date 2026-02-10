@@ -38,26 +38,24 @@ export const seedDatabase = async () => {
 };
 
 
-// Função para criar usuário administrador automaticamente
+// Função para garantir que o usuário administrador exista (sem resetar senha)
 export const createAdminUser = async () => {
-    const adminEmail = 'brenooodesena@gmail.com';
+    const adminEmail = 'brenooodesena@gmail.com'.toLowerCase();
     const tempPassword = 'admin123';
 
     try {
-        const passwordHash = await hashPassword(tempPassword);
+        // Verificar se usuário existe (usando a nova busca robusta)
+        const existing = await db.getStudentByEmail(adminEmail);
 
-        // Verificar se usuário existe
-        const exists = await db.checkEmailExists(adminEmail);
-
-        if (exists) {
-            console.log('✅ Usuário administrador já existe no Firestore.');
+        if (existing) {
+            console.log(`[SEED] Admin já existe (ID: ${existing.id}). Nenhuma ação necessária.`);
         } else {
-            // Criar novo se não existir
-            console.log('✨ Criando usuário administrador no Firestore...');
+            console.log('[SEED] Admin não encontrado. Criando nova conta...');
+            const passwordHash = await hashPassword(tempPassword);
             await db.registerStudent('Administrador', adminEmail, passwordHash, 'approved');
-            console.log('✅ Acesso de administrador inicial configurado: brenooodesena@gmail.com / admin123');
+            console.log('[SEED] Acesso inicial configurado: brenooodesena@gmail.com / admin123');
         }
     } catch (error) {
-        console.error('Erro ao configurar administrador no Firebase:', error);
+        console.error('[SEED] Erro ao configurar admin:', error);
     }
 };

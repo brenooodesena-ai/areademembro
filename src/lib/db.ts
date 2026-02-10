@@ -254,12 +254,19 @@ export const db = {
 
     getStudentByEmail: async (email: string): Promise<Student | null> => {
         try {
+            const normalizedEmail = email.trim().toLowerCase();
             const q = query(
                 collection(firestore, COLLECTIONS.STUDENTS),
-                where('email', '==', email.toLowerCase().trim())
+                where('email', '==', normalizedEmail)
             );
             const snap = await getDocs(q);
-            if (snap.empty) return null;
+            if (snap.empty) {
+                // FALLBACK: Manual scan for case-insensitive match
+                const allSnap = await getDocs(collection(firestore, COLLECTIONS.STUDENTS));
+                const found = allSnap.docs.find(d => d.data().email?.toLowerCase() === normalizedEmail);
+                if (found) return { id: found.id, ...found.data() } as Student;
+                return null;
+            }
             return { id: snap.docs[0].id, ...snap.docs[0].data() } as Student;
         } catch (error) {
             console.error('Error fetching student:', error);
@@ -292,31 +299,53 @@ export const db = {
     },
 
     cleanupDuplicateAdmins: async () => {
-        const email = 'brenooodesena@gmail.com';
-        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email));
-        const snap = await getDocs(q);
+        const adminEmail = 'brenooodesena@gmail.com'.toLowerCase();
+        console.log(`[DB] Iniciando Super Cleanup para: ${adminEmail}`);
 
-        if (snap.size > 1) {
-            console.log(`Found ${snap.size} admin accounts. Cleaning up duplicates...`);
-            // Sort by lastAccess (descending) to keep the most active one
-            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-            docs.sort((a, b) => new Date(b.lastAccess || 0).getTime() - new Date(a.lastAccess || 0).getTime());
+        const allSnap = await getDocs(collection(firestore, COLLECTIONS.STUDENTS));
+        const adminDocs = allSnap.docs
+            .map(d => ({ id: d.id, ...d.data() } as any))
+            .filter(d => d.email?.toLowerCase().trim() === adminEmail);
 
-            const [toKeep, ...toDelete] = docs;
-            console.log(`Keeping admin with ID: ${toKeep.id}`);
+        if (adminDocs.length > 1) {
+            console.log(`[DB] Encontradas ${adminDocs.length} contas de admin. Limpando...`);
+            // Sort by lastAccess or created_at (descending) to keep the best one
+            adminDocs.sort((a, b) => {
+                const dateA = new Date(a.lastAccess || a.created_at || 0).getTime();
+                const dateB = new Date(b.lastAccess || b.created_at || 0).getTime();
+                return dateB - dateA;
+            });
+
+            const [toKeep, ...toDelete] = adminDocs;
+            console.log(`[DB] Mantendo conta ativa: ${toKeep.id} (Email: ${toKeep.email})`);
 
             for (const docToDelete of toDelete) {
-                console.log(`Deleting duplicate admin ID: ${docToDelete.id}`);
+                console.log(`[DB] Deletando duplicata: ${docToDelete.id} (Email: ${docToDelete.email})`);
                 await deleteDoc(doc(firestore, COLLECTIONS.STUDENTS, docToDelete.id));
             }
+
+            // Re-normalize email of the one we kept
+            if (toKeep.email !== adminEmail) {
+                await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, toKeep.id), {
+                    email: adminEmail
+                });
+                console.log(`[DB] Email do admin normalizado para: ${adminEmail}`);
+            }
+        } else if (adminDocs.length === 1 && adminDocs[0].email !== adminEmail) {
+            await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, adminDocs[0].id), {
+                email: adminEmail
+            });
+            console.log(`[DB] Email do único admin normalizado para: ${adminEmail}`);
         }
     },
 
     loginStudent: async (email: string, passwordHash: string) => {
-        console.log(`[DB] Tentando login para: ${email}`);
+        const normalizedEmail = email.trim().toLowerCase();
+        console.log(`[DB] Tentando login para: ${normalizedEmail}`);
+
         const studentsQuery = query(
             collection(firestore, COLLECTIONS.STUDENTS),
-            where('email', '==', email.toLowerCase()),
+            where('email', '==', normalizedEmail),
             where('password_hash', '==', passwordHash)
         );
         const snap = await getDocs(studentsQuery);
@@ -367,7 +396,8 @@ export const db = {
     },
 
     updateStudentName: async (email: string, newName: string) => {
-        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const normalizedEmail = email.trim().toLowerCase();
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', normalizedEmail));
         const snap = await getDocs(q);
         if (!snap.empty) {
             await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, snap.docs[0].id), { name: newName });
@@ -375,14 +405,16 @@ export const db = {
     },
 
     checkEmailExists: async (email: string) => {
-        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const normalizedEmail = email.trim().toLowerCase();
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', normalizedEmail));
         const snap = await getDocs(q);
         return !snap.empty;
     },
 
     updatePassword: async (email: string, passwordHash: string) => {
-        console.log(`[DB] Atualizando senha para: ${email}`);
-        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
+        const normalizedEmail = email.trim().toLowerCase();
+        console.log(`[DB] Atualizando senha para: ${normalizedEmail}`);
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', normalizedEmail));
         const snap = await getDocs(q);
         if (!snap.empty) {
             // Update ALL matching docs to ensure consistency (fix for duplicates)
@@ -391,7 +423,7 @@ export const db = {
                 console.log(`[DB] Senha atualizada no doc: ${d.id}`);
             }
         } else {
-            console.warn(`[DB] Falha ao atualizar senha. Email não encontrado: ${email}`);
+            console.warn(`[DB] Falha ao atualizar senha. Email não encontrado: ${normalizedEmail}`);
         }
     },
 
