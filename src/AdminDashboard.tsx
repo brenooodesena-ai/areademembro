@@ -72,6 +72,10 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
     const [newLessonThumbnail, setNewLessonThumbnail] = useState("");
     const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+    const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [videoSourceType, setVideoSourceType] = useState<'upload' | 'link'>('link');
 
     // New Module Modal State
     const [isNewModuleModalOpen, setIsNewModuleModalOpen] = useState(false);
@@ -210,25 +214,34 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
     };
 
     const deleteLesson = async (moduleId: string, lessonId: string) => {
-        try {
-            // REMOVED db.deleteLesson(lessonId); -- Now draft only
+        if (!window.confirm("Tem certeza que deseja excluir esta aula?")) return;
 
-            const updatedModules = modules.map(m => {
-                if (m.id === moduleId) {
-                    return {
-                        ...m,
-                        lessons: m.lessons.filter(l => l.id !== lessonId),
-                        lessonCount: Math.max(0, m.lessonCount - 1)
-                    };
-                }
-                return m;
-            });
+        try {
+            const moduleToUpdate = modules.find(m => m.id === moduleId);
+            if (!moduleToUpdate) return;
+
+            const updatedLessons = moduleToUpdate.lessons.filter(l => l.id !== lessonId);
+            const updatedModule = {
+                ...moduleToUpdate,
+                lessons: updatedLessons,
+                lessonCount: Math.max(0, moduleToUpdate.lessonCount - 1)
+            };
+
+            // Update State
+            const updatedModules = modules.map(m =>
+                m.id === moduleId ? updatedModule : m
+            );
             setModules(updatedModules);
+
+            // Save to DB
+            await db.syncModule(updatedModule);
+
             if (editingLessonId === lessonId) {
                 cancelEdit();
             }
         } catch (error) {
             console.error("Error deleting lesson:", error);
+            alert("Erro ao excluir aula.");
         }
     };
 
@@ -239,6 +252,11 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonVideoId(lesson.videoId || "");
         setNewLessonThumbnail(lesson.thumbnail || "");
         setNewLessonAttachments(lesson.attachments || []);
+        setSelectedVideoFile(null);
+
+        // Detect source type automatically
+        const isUrl = lesson.videoId?.includes('http') && !lesson.videoId?.includes('firebasestorage');
+        setVideoSourceType(isUrl ? 'link' : 'upload');
     };
 
     const cancelEdit = () => {
@@ -248,6 +266,10 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonVideoId("");
         setNewLessonThumbnail("");
         setNewLessonAttachments([]);
+        setSelectedVideoFile(null);
+        setIsUploading(false);
+        setUploadProgress(0);
+        setVideoSourceType('link');
     };
 
     const handleSaveLesson = async (moduleId: string) => {
@@ -255,41 +277,62 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         const description = newLessonDescription.trim() ? newLessonDescription : "Sem descrição";
 
         try {
+            const moduleToUpdate = modules.find(m => m.id === moduleId);
+            if (!moduleToUpdate) return;
+
+            setIsUploading(true);
+            setUploadProgress(0);
+
+            let finalVideoUrl = newLessonVideoId;
+
+            // If a NEW local file was selected AND source is 'upload', upload it with progress
+            if (selectedVideoFile && videoSourceType === 'upload') {
+                const fileName = `${Date.now()}_${selectedVideoFile.name}`;
+                const path = `lessons/videos/${moduleId}/${fileName}`;
+                setUploadProgress(1); // Small starting progress for feedback
+                finalVideoUrl = await db.uploadFileWithProgress(selectedVideoFile, path, (p) => {
+                    setUploadProgress(Math.max(p, 1));
+                });
+            }
+
             const lessonData: Lesson = {
-                id: editingLessonId || Date.now().toString(), // Temp ID if new
+                id: editingLessonId || Date.now().toString(),
                 title: newLessonTitle,
                 description,
-                videoId: newLessonVideoId,
+                videoId: finalVideoUrl,
                 thumbnail: newLessonThumbnail,
                 attachments: newLessonAttachments
             };
 
-            // REMOVED await db.saveLesson(moduleId, lessonData); -- Now draft only
-            const savedLesson = { ...lessonData, module_id: moduleId }; // Mock saved lesson
+            let updatedLessons;
+            let updatedCount = moduleToUpdate.lessonCount;
 
-            setModules((prevModules) => prevModules.map(m => {
-                if (m.id === moduleId) {
-                    // If editing existing lesson
-                    if (editingLessonId) {
-                        return {
-                            ...m,
-                            lessons: m.lessons.map(l => l.id === editingLessonId ? savedLesson : l)
-                        };
-                    }
-                    // If adding new lesson
-                    return {
-                        ...m,
-                        lessons: [...m.lessons, savedLesson],
-                        lessonCount: m.lessonCount + 1
-                    };
-                }
-                return m;
-            }));
+            if (editingLessonId) {
+                updatedLessons = moduleToUpdate.lessons.map(l => l.id === editingLessonId ? lessonData : l);
+            } else {
+                updatedLessons = [...moduleToUpdate.lessons, lessonData];
+                updatedCount += 1;
+            }
+
+            const updatedModule = {
+                ...moduleToUpdate,
+                lessons: updatedLessons,
+                lessonCount: updatedCount
+            };
+
+            // Update State immediately
+            setModules(prev => prev.map(m => m.id === moduleId ? updatedModule : m));
+
+            // Save to DB (Fire and forget or wait, but don't refetch everything)
+            await db.syncModule(updatedModule);
 
             cancelEdit();
         } catch (error) {
             console.error("Error saving lesson:", error);
             alert("Erro ao salvar aula. Verifique a conexão.");
+        } finally {
+            setIsUploading(false);
+            setUploadProgress(0);
         }
     };
 
@@ -348,23 +391,29 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         }
     };
 
-    const handleLessonDragEnd = (event: DragEndEvent) => {
+    const handleLessonDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
         if (!over || active.id === over.id || !editingModule) return;
 
-        setModules((prevModules) => {
-            return prevModules.map((mod) => {
-                if (mod.id === editingModule) {
-                    const oldIndex = mod.lessons.findIndex((l) => l.id === active.id);
-                    const newIndex = mod.lessons.findIndex((l) => l.id === over.id);
-                    return {
-                        ...mod,
-                        lessons: arrayMove(mod.lessons, oldIndex, newIndex)
-                    };
-                }
-                return mod;
-            });
-        });
+        try {
+            const moduleToUpdate = modules.find(m => m.id === editingModule);
+            if (!moduleToUpdate) return;
+
+            const oldIndex = moduleToUpdate.lessons.findIndex((l) => l.id === active.id);
+            const newIndex = moduleToUpdate.lessons.findIndex((l) => l.id === over.id);
+
+            const updatedLessons = arrayMove(moduleToUpdate.lessons, oldIndex, newIndex);
+            const updatedModule = { ...moduleToUpdate, lessons: updatedLessons };
+
+            // Update State
+            setModules(prev => prev.map(m => m.id === editingModule ? updatedModule : m));
+
+            // Sync to DB
+            await db.syncModule(updatedModule);
+        } catch (error) {
+            console.error("Error updating lesson order:", error);
+            alert("Erro ao salvar ordem das aulas.");
+        }
     };
 
     return (
@@ -1239,45 +1288,84 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                             onChange={(e) => setNewLessonDescription(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
                                         />
-                                        {/* Video Upload Area with Trash Icon */}
-                                        <div className="relative group">
-                                            <div className={`w-full bg-black border border-dashed ${newLessonVideoId ? 'border-green-500/50' : 'border-white/10'} rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-3 transition-colors hover:border-gold-500/30`}>
-                                                <div className="p-3 bg-white/5 rounded-full group-hover:bg-gold-500/10 transition-colors">
-                                                    <Upload size={24} className={`${newLessonVideoId ? 'text-green-500' : 'text-white/40 group-hover:text-gold-500'} transition-colors`} />
-                                                </div>
-                                                <div className="text-center">
-                                                    <p className="text-sm font-bold text-white">
-                                                        {newLessonVideoId ? 'Vídeo Selecionado' : 'Exportar Vídeo'}
-                                                    </p>
-                                                    <p className="text-xs text-white/40 mt-1">
-                                                        {newLessonVideoId ? 'Pronto para salvar' : 'Arraste ou clique (MP4)'}
-                                                    </p>
+                                        {/* Video Source Selection */}
+                                        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                                            <button
+                                                onClick={() => setVideoSourceType('link')}
+                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${videoSourceType === 'link' ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/10' : 'text-white/40 hover:text-white/60'}`}
+                                            >
+                                                <LinkIcon size={14} /> Link (YouTube/Vimeo)
+                                            </button>
+                                            <button
+                                                onClick={() => setVideoSourceType('upload')}
+                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${videoSourceType === 'upload' ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/10' : 'text-white/40 hover:text-white/60'}`}
+                                            >
+                                                <Upload size={14} /> Upload Arquivo
+                                            </button>
+                                        </div>
+
+                                        {videoSourceType === 'link' ? (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                                                        <LinkIcon size={12} /> URL do Vídeo
+                                                    </label>
+                                                    <span className="text-[10px] text-gold-500/60 font-medium">Instantâneo</span>
                                                 </div>
                                                 <input
-                                                    type="file"
-                                                    accept="video/*"
-                                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            const url = URL.createObjectURL(file);
-                                                            setNewLessonVideoId(url);
-                                                            alert("Vídeo selecionado com sucesso!");
-                                                        }
-                                                        e.target.value = ''; // Reset input to allow re-uploading the same file
-                                                    }}
+                                                    type="text"
+                                                    placeholder="Cole o link do YouTube, Vimeo ou Panda..."
+                                                    className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
+                                                    value={newLessonVideoId}
+                                                    onChange={(e) => setNewLessonVideoId(e.target.value)}
+                                                    onKeyDown={(e) => e.stopPropagation()}
                                                 />
+                                                <p className="text-[10px] text-white/20">Suporta YouTube, Vimeo, PandaVideo, etc.</p>
                                             </div>
-                                            {newLessonVideoId && (
-                                                <button
-                                                    onClick={() => setNewLessonVideoId("")}
-                                                    className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-red-500/20 text-white/60 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/30 shadow-lg"
-                                                    title="Remover vídeo"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
-                                        </div>
+                                        ) : (
+                                            <div className="relative group">
+                                                <div className={`w-full bg-black border border-dashed ${newLessonVideoId ? 'border-green-500/50' : 'border-white/10'} rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-3 transition-colors hover:border-gold-500/30`}>
+                                                    <div className="p-3 bg-white/5 rounded-full group-hover:bg-gold-500/10 transition-colors">
+                                                        <Upload size={24} className={`${newLessonVideoId ? 'text-green-500' : 'text-white/40 group-hover:text-gold-500'} transition-colors`} />
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-sm font-bold text-white">
+                                                            {newLessonVideoId ? 'Vídeo Selecionado' : 'Exportar Vídeo'}
+                                                        </p>
+                                                        <p className="text-xs text-white/40 mt-1">
+                                                            {newLessonVideoId ? 'Pronto para salvar' : 'Arraste ou clique (MP4)'}
+                                                        </p>
+                                                    </div>
+                                                    <input
+                                                        type="file"
+                                                        accept="video/*"
+                                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const url = URL.createObjectURL(file);
+                                                                setNewLessonVideoId(url);
+                                                                setSelectedVideoFile(file);
+                                                                alert("Vídeo selecionado com sucesso!");
+                                                            }
+                                                            e.target.value = ''; // Reset input to allow re-uploading the same file
+                                                        }}
+                                                    />
+                                                </div>
+                                                {newLessonVideoId && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setNewLessonVideoId("");
+                                                            setSelectedVideoFile(null);
+                                                        }}
+                                                        className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-red-500/20 text-white/60 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/30 shadow-lg"
+                                                        title="Remover vídeo"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
 
                                         {/* Thumbnail Upload Area (Optional) */}
                                         <div className="relative group">
@@ -1405,10 +1493,26 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                 </button>
                                             )}
                                             <button
-                                                onClick={() => handleSaveLesson(editingModule)}
-                                                className="flex-1 bg-gold-500 text-black px-4 py-3 font-bold rounded-lg hover:bg-gold-400 transition-colors text-sm"
+                                                disabled={isUploading || !newLessonTitle.trim()}
+                                                onClick={() => handleSaveLesson(editingModule!)}
+                                                className={`flex-1 px-4 py-3 font-bold rounded-lg transition-all text-sm flex flex-col items-center justify-center gap-1 min-h-[52px] ${isUploading ? 'bg-zinc-800 text-white/20 cursor-not-allowed' : 'bg-gold-500 hover:bg-gold-400 text-black'}`}
                                             >
-                                                {editingLessonId ? 'Salvar' : 'Adicionar'}
+                                                {isUploading ? (
+                                                    <>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                                            <span>Enviando... {Math.round(uploadProgress)}%</span>
+                                                        </div>
+                                                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1">
+                                                            <div
+                                                                className="h-full bg-gold-400 transition-all duration-300"
+                                                                style={{ width: `${uploadProgress}%` }}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <span>{editingLessonId ? 'Salvar' : 'Adicionar'}</span>
+                                                )}
                                             </button>
                                         </div>
                                     </div>

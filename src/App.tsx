@@ -12,9 +12,23 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [studentEmail, setStudentEmail] = useState<string>('');
 
-  // Data State
-  const [bannerConfig, setBannerConfig] = useState<BannerConfig>(initialBannerConfig as BannerConfig);
-  const [appModules, setAppModules] = useState<Module[]>(initialModules);
+  // Data State with Caching
+  const [bannerConfig, setBannerConfig] = useState<BannerConfig>(() => {
+    const cached = localStorage.getItem('cached_banner');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) { console.error("Error parsing cached banner:", e); }
+    }
+    return initialBannerConfig as BannerConfig;
+  });
+
+  const [appModules, setAppModules] = useState<Module[]>(() => {
+    const cached = localStorage.getItem('cached_modules');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) { console.error("Error parsing cached modules:", e); }
+    }
+    return initialModules;
+  });
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -34,14 +48,17 @@ function App() {
 
         if (modules && modules.length > 0 && !isLegacyData) {
           setAppModules(modules);
+          localStorage.setItem('cached_modules', JSON.stringify(modules));
           console.log("✅ Módulos carregados do Firestore:", modules.length);
         } else {
           console.log("⚠️ Banco vazio ou dados antigos detectados. Usando curriculum padrão.");
           setAppModules(initialModules);
+          localStorage.removeItem('cached_modules');
         }
 
         if (banner) {
           setBannerConfig(banner);
+          localStorage.setItem('cached_banner', JSON.stringify(banner));
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);

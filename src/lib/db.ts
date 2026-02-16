@@ -12,6 +12,8 @@ import {
     where,
     orderBy,
 } from 'firebase/firestore';
+import { storage } from './firebase';
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 export interface Attachment {
     id: string;
@@ -471,5 +473,31 @@ export const db = {
     saveBannerConfig: async (config: any) => {
         const docRef = doc(firestore, COLLECTIONS.APP_SETTINGS, 'banner_config');
         await setDoc(docRef, { value: config }, { merge: true });
+    },
+
+    // --- UPLOADS ---
+    uploadFile: async (file: File, path: string): Promise<string> => {
+        const fileRef = ref(storage, path);
+        const snapshot = await uploadBytes(fileRef, file);
+        return await getDownloadURL(snapshot.ref);
+    },
+
+    uploadFileWithProgress: (file: File, path: string, onProgress: (progress: number) => void): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const fileRef = ref(storage, path);
+            const uploadTask = uploadBytesResumable(fileRef, file);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    onProgress(progress);
+                },
+                (error) => reject(error),
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    resolve(downloadURL);
+                }
+            );
+        });
     }
 };

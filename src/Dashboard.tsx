@@ -52,38 +52,47 @@ interface ModuleCardProps {
     onClick?: () => void;
 }
 
-const ModuleCard = ({ image, title, showTitle, lessons, onClick }: ModuleCardProps) => (
-    // Removido lessonCount pois não estava sendo usado (usa-se lessons.length)
-    <div onClick={onClick} className="flex-none w-[180px] sm:w-[200px] lg:w-[220px] 2xl:w-[250px] aspect-[2/3] group relative bg-black-900 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/30 transition-all duration-700 hover:shadow-[0_20px_80px_-20px_rgba(212,175,55,0.15)] hover:-translate-y-2 cursor-pointer snap-start">
-        {/* Full Height Image with Cinematic Zoom */}
-        <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors duration-700 z-10" />
-            <img
-                src={image}
-                alt={title || "Module Cover"}
-                className="w-full h-full object-cover"
-            />
-        </div>
+const ModuleCard = ({ image, title, showTitle, lessons, onClick }: ModuleCardProps) => {
+    const [isLoaded, setIsLoaded] = useState(false);
 
-        {/* Premium Glass Badge - Lesson Count */}
-        <div className="absolute top-4 right-4 z-20">
-            <div className="bg-black/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
-                <BookOpen size={12} className="text-gold-400" />
-                <span className="text-[10px] uppercase tracking-widest font-bold text-white/90">{lessons?.length || 0} Aulas</span>
+    return (
+        <div onClick={onClick} className="flex-none w-[180px] sm:w-[200px] lg:w-[220px] 2xl:w-[250px] aspect-[2/3] group relative bg-zinc-900 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/30 transition-all duration-700 hover:shadow-[0_20px_80px_-20px_rgba(212,175,55,0.15)] hover:-translate-y-2 cursor-pointer snap-start">
+            {/* Full Height Image with Cinematic Zoom and Fade-in */}
+            <div className="absolute inset-0 overflow-hidden bg-zinc-800">
+                {/* Skeleton Loader Shine */}
+                {!isLoaded && (
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shimmer" />
+                )}
+
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors duration-700 z-10" />
+                <img
+                    src={image}
+                    alt={title || "Module Cover"}
+                    className={`w-full h-full object-cover transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    onLoad={() => setIsLoaded(true)}
+                />
             </div>
-        </div>
 
-        {/* Title Overlay with Gradient - Only if showTitle is true */}
-        {showTitle && title && (
-            <div className="absolute bottom-0 inset-x-0 z-20 p-8 pt-24 bg-linear-to-t from-black via-black/80 to-transparent">
-                <h3 className="text-white font-bold text-2xl leading-tight group-hover:text-gold-400 transition-colors duration-300 drop-shadow-lg">{title}</h3>
+            {/* Premium Glass Badge - Lesson Count */}
+            <div className="absolute top-4 right-4 z-20">
+                <div className="bg-black/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
+                    <BookOpen size={12} className="text-gold-400" />
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-white/90">{lessons?.length || 0} Aulas</span>
+                </div>
             </div>
-        )}
 
-        {/* Subtle Inner Glow on Hover */}
-        <div className="absolute inset-0 border border-white/0 group-hover:border-white/10 rounded-lg transition-all duration-700 pointer-events-none z-30" />
-    </div>
-);
+            {/* Title Overlay with Gradient - Only if showTitle is true */}
+            {showTitle && title && (
+                <div className="absolute bottom-0 inset-x-0 z-20 p-8 pt-24 bg-linear-to-t from-black via-black/80 to-transparent">
+                    <h3 className="text-white font-bold text-2xl leading-tight group-hover:text-gold-400 transition-colors duration-300 drop-shadow-lg">{title}</h3>
+                </div>
+            )}
+
+            {/* Subtle Inner Glow on Hover */}
+            <div className="absolute inset-0 border border-white/0 group-hover:border-white/10 rounded-lg transition-all duration-700 pointer-events-none z-30" />
+        </div>
+    );
+};
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -494,7 +503,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                 {/* --- DESKTOP BANNER (Hidden on Mobile) --- */}
                 <div className="hidden md:block">
                     {bannerConfig.desktopMediaType === 'video' ? (
-                        <div className="w-full h-[85vh] overflow-hidden relative">
+                        <div className="w-full h-[85vh] overflow-hidden relative bg-black">
                             <video
                                 src={bannerConfig.desktopMediaUrl}
                                 autoPlay
@@ -505,21 +514,23 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                             />
                         </div>
                     ) : (
-                        <img
-                            src={bannerConfig.desktopMediaUrl}
-                            alt="Banner Desktop"
-                            className="w-full h-auto object-cover max-h-[85vh] mask-image-b"
-                            data-pin-nopin="true"
-                            onContextMenu={(e) => e.preventDefault()}
-                            draggable={false}
-                        />
+                        <div className="w-full h-auto min-h-[400px] bg-black">
+                            <img
+                                src={bannerConfig.desktopMediaUrl}
+                                alt="Banner Desktop"
+                                className={`w-full h-auto object-cover max-h-[85vh] mask-image-b transition-opacity duration-1000 ${bannerConfig.desktopMediaUrl ? 'opacity-100' : 'opacity-0'}`}
+                                data-pin-nopin="true"
+                                onContextMenu={(e) => e.preventDefault()}
+                                draggable={false}
+                            />
+                        </div>
                     )}
                 </div>
 
                 {/* --- MOBILE BANNER (Visible only on Mobile) --- */}
                 <div className="block md:hidden">
                     {bannerConfig.mobileMediaType === 'video' ? (
-                        <div className="w-full h-[60vh] overflow-hidden relative">
+                        <div className="w-full h-[60vh] overflow-hidden relative bg-black">
                             <video
                                 src={bannerConfig.mobileMediaUrl || bannerConfig.desktopMediaUrl}
                                 autoPlay
@@ -530,14 +541,16 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                             />
                         </div>
                     ) : (
-                        <img
-                            src={bannerConfig.mobileMediaUrl || bannerConfig.desktopMediaUrl}
-                            alt="Banner Mobile"
-                            className="w-full h-auto object-cover max-h-[60vh] mask-image-b"
-                            data-pin-nopin="true"
-                            onContextMenu={(e) => e.preventDefault()}
-                            draggable={false}
-                        />
+                        <div className="w-full h-auto min-h-[300px] bg-black">
+                            <img
+                                src={bannerConfig.mobileMediaUrl || bannerConfig.desktopMediaUrl}
+                                alt="Banner Mobile"
+                                className={`w-full h-auto object-cover max-h-[60vh] mask-image-b transition-opacity duration-1000 ${bannerConfig.desktopMediaUrl ? 'opacity-100' : 'opacity-0'}`}
+                                data-pin-nopin="true"
+                                onContextMenu={(e) => e.preventDefault()}
+                                draggable={false}
+                            />
+                        </div>
                     )}
                 </div>
             </div>

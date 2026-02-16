@@ -82,16 +82,44 @@ export function Classroom({ module, onBack }: ClassroomProps) {
                     {/* Video Player Section - Keeping the smaller size as refined previously */}
                     <section className="w-full relative flex justify-start p-4 md:p-8 bg-black">
                         <div className="w-full max-w-full">
-                            {activeLesson.videoId && activeLesson.videoId.startsWith('blob:') ? (
-                                <video
-                                    src={activeLesson.videoId}
-                                    controls
-                                    className="w-full aspect-video object-cover bg-black rounded-xl shadow-2xl border border-white/5"
-                                    poster={activeLesson.thumbnail || ""}
-                                    controlsList="nodownload"
-                                >
-                                    Seu navegador não suporta a tag de vídeo.
-                                </video>
+                            {activeLesson.videoId ? (
+                                <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
+                                    {(() => {
+                                        const url = activeLesson.videoId;
+
+                                        // YouTube
+                                        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                                            const id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop();
+                                            return <iframe src={`https://www.youtube.com/embed/${id}`} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />;
+                                        }
+
+                                        // Vimeo
+                                        if (url.includes('vimeo.com')) {
+                                            const id = url.split('/').pop();
+                                            return <iframe src={`https://player.vimeo.com/video/${id}`} className="w-full h-full" allowFullScreen allow="autoplay; fullscreen; picture-in-picture" />;
+                                        }
+
+                                        // PandaVideo
+                                        if (url.includes('pandavideo.com.br')) {
+                                            const id = url.split('/').pop();
+                                            return <iframe src={`https://player.pandavideo.com.br/embed/${id}`} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />;
+                                        }
+
+                                        // Default: Native Video Tag
+                                        return (
+                                            <video
+                                                key={url}
+                                                src={url}
+                                                controls
+                                                className="w-full h-full object-cover"
+                                                poster={activeLesson.thumbnail || ""}
+                                                controlsList="nodownload"
+                                            >
+                                                Seu navegador não suporta a tag de vídeo.
+                                            </video>
+                                        );
+                                    })()}
+                                </div>
                             ) : (
                                 <div className="w-full aspect-video relative flex items-center justify-center bg-neutral-900 rounded-xl overflow-hidden shadow-2xl border border-white/5">
                                     <div className="absolute inset-0">
