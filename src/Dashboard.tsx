@@ -3,6 +3,7 @@ import { LogOut, ArrowLeft, ArrowRight, BookOpen, X, User, Mail, Camera, ShieldC
 import { StudentAI } from './components/StudentAI';
 import { Classroom } from './components/Classroom';
 import { db } from './lib/db';
+import { compressImage } from './lib/imageUtils';
 
 export interface Attachment {
     id: string;
@@ -133,20 +134,29 @@ const ProfileModal = ({ isOpen, onClose, name, setName, email, image, setImage, 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // 1. Atualizar Nome
-            await db.updateStudentName(email, tempName);
+            // 1. Comprimir imagem se mudou
+            let finalImage = tempImage;
+            if (tempImage && tempImage !== image && tempImage.startsWith('data:image')) {
+                finalImage = await compressImage(tempImage, 800, 0.6);
+            }
 
-            // 2. Salvar Imagem no localStorage (chave sempre minúscula)
+            // 2. Atualizar no Banco (Firestore)
+            await Promise.all([
+                db.updateStudentName(email, tempName),
+                db.updateStudentImage(email, finalImage)
+            ]);
+
+            // 3. Cache local para performance imediata
             const storageKey = `profile_image_${email.toLowerCase().trim()}`;
-            if (tempImage) {
-                localStorage.setItem(storageKey, tempImage);
+            if (finalImage) {
+                localStorage.setItem(storageKey, finalImage);
             } else {
                 localStorage.removeItem(storageKey);
             }
 
-            // Atualizar estado global
+            // Atualizar estado global do App
             setName(tempName);
-            setImage(tempImage);
+            setImage(finalImage);
 
             onClose();
         } catch (error) {
@@ -285,7 +295,6 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
     // Initialize with fallback values based on the prop
     const [userName, setUserName] = useState(() => {
         const normalizedEmail = studentEmail.toLowerCase().trim();
-        if (normalizedEmail === 'brenooodesena@gmail.com') return "Administrador";
         return normalizedEmail.split('@')[0] || "Aluno";
     });
     const [userEmail, setUserEmail] = useState(studentEmail.toLowerCase().trim());
@@ -306,24 +315,21 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     const student = await db.getStudentByEmail(studentEmail);
 
                     if (student) {
-                        // Priority 1: Name from Database
-                        if (student.name) {
-                            setUserName(student.name);
+                        // Priority 1: Data from Database
+                        if (student.name) setUserName(student.name);
+
+                        // Priority 2: Image (Firestore first, then LocalStorage fallback)
+                        if (student.image) {
+                            setUserImage(student.image);
+                        } else {
+                            const savedImage = localStorage.getItem(`profile_image_${studentEmail.toLowerCase().trim()}`);
+                            if (savedImage) setUserImage(savedImage);
                         }
 
                         setUserEmail(student.email || studentEmail.toLowerCase());
-
-                        // Priority 2: Image from LocalStorage (with normalized key)
-                        const savedImage = localStorage.getItem(`profile_image_${studentEmail.toLowerCase().trim()}`);
-                        if (savedImage) setUserImage(savedImage);
-
                     } else {
                         // Fallback logic for when the database record is missing
-                        if (studentEmail.toLowerCase() === 'brenooodesena@gmail.com') {
-                            setUserName("Administrador");
-                        } else {
-                            setUserName(studentEmail.split('@')[0] || "Aluno");
-                        }
+                        setUserName(studentEmail.split('@')[0] || "Aluno");
                         setUserEmail(studentEmail);
                     }
                 } catch (error) {

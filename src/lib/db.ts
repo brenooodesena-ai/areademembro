@@ -48,6 +48,7 @@ export interface Student {
     status: 'pending' | 'approved' | 'rejected';
     progress: number;
     lastAccess: string;
+    image?: string | null;
     accessLogs?: string[];
     created_at?: string;
     approved_at?: string;
@@ -401,6 +402,17 @@ export const db = {
         const snap = await getDocs(q);
         if (!snap.empty) {
             await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, snap.docs[0].id), { name: newName });
+            console.log(`[DB] Nome do aluno ${normalizedEmail} atualizado para: ${newName}`);
+        }
+    },
+
+    updateStudentImage: async (email: string, image: string | null) => {
+        const normalizedEmail = email.trim().toLowerCase();
+        const q = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', normalizedEmail));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            await updateDoc(doc(firestore, COLLECTIONS.STUDENTS, snap.docs[0].id), { image });
+            console.log(`[DB] Imagem do aluno ${normalizedEmail} atualizada.`);
         }
     },
 
