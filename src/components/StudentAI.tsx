@@ -11,10 +11,11 @@ interface Message {
 
 interface StudentAIProps {
     modules: Module[];
+    isOpen: boolean;
+    onClose: () => void;
 }
 
-export function StudentAI({ modules }: StudentAIProps) {
-    const [isOpen, setIsOpen] = useState(false);
+export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
     const [isMinimized, setIsMinimized] = useState(false); // If we want a minimized bar state
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -155,17 +156,6 @@ export function StudentAI({ modules }: StudentAIProps) {
 
     return (
         <>
-            {/* Float Button */}
-            {!isOpen && (
-                <button
-                    onClick={() => setIsOpen(true)}
-                    className="fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full bg-linear-to-tr from-gold-500 to-gold-400 text-black shadow-[0_0_30px_rgba(212,175,55,0.4)] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer group"
-                >
-                    <Bot size={32} className="group-hover:rotate-12 transition-transform duration-300" />
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full border-2 border-black animate-pulse" />
-                </button>
-            )}
-
             {/* Chat Window */}
             {isOpen && (
                 <div className={`fixed z-50 transition-all duration-300 ${isMinimized
@@ -198,7 +188,7 @@ export function StudentAI({ modules }: StudentAIProps) {
                                 {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
                             </button>
                             <button
-                                onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+                                onClick={(e) => { e.stopPropagation(); onClose(); }}
                                 className="p-2 hover:bg-red-500/20 rounded-lg text-white/50 hover:text-red-500 transition-colors"
                             >
                                 <X size={18} />

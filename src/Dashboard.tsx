@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { LogOut, ArrowLeft, ArrowRight, BookOpen, X, User, Mail, Camera, ShieldCheck } from 'lucide-react';
+import { LogOut, ArrowLeft, ArrowRight, BookOpen, X, User, Mail, Camera, ShieldCheck, Bot, Sparkles } from 'lucide-react';
 import { StudentAI } from './components/StudentAI';
 import { Classroom } from './components/Classroom';
 import { db } from './lib/db';
@@ -310,6 +310,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
     const [userImage, setUserImage] = useState<string | null>(() => {
         return localStorage.getItem(`profile_image_${studentEmail.toLowerCase().trim()}`);
     });
+    const [isAIOpen, setIsAIOpen] = useState(false);
     const [showWelcome, setShowWelcome] = useState(showWelcomeNotification);
 
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
@@ -434,7 +435,11 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
             />
 
             {/* AI Assistant */}
-            <StudentAI modules={modules} />
+            <StudentAI
+                modules={modules}
+                isOpen={isAIOpen}
+                onClose={() => setIsAIOpen(false)}
+            />
 
             {/* Navbar Minimalist */}
             <nav className="w-full z-50 absolute top-0 left-0 pointer-events-none">
@@ -446,9 +451,21 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                     </div>
 
                     <div className="flex items-center gap-6 relative z-50">
+                        {/* IA Mentor Premium Button */}
+                        <div
+                            onClick={() => setIsAIOpen(true)}
+                            className="flex items-center gap-3 px-5 py-2.5 bg-linear-to-r from-gold-600/20 via-gold-500/10 to-transparent border border-gold-500/30 rounded-full cursor-pointer hover:border-gold-400 group transition-all duration-300 shadow-[0_0_20px_rgba(212,175,55,0.05)] active:scale-95"
+                        >
+                            <div className="relative">
+                                <Bot size={18} className="text-gold-400 group-hover:rotate-12 transition-transform" />
+                                <Sparkles size={8} className="absolute -top-1 -right-1 text-gold-200 animate-pulse" />
+                            </div>
+                            <span className="text-[11px] font-bold text-white uppercase tracking-[0.2em] group-hover:text-gold-400 transition-colors">IA Mentor</span>
+                        </div>
+
                         <div
                             onClick={() => setIsProfileOpen(true)}
-                            className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity group -mt-2"
+                            className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity group"
                         >
                             <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/20 group-hover:border-gold-400/50 transition-colors">
                                 {userImage ? (
