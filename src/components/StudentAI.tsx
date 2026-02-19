@@ -1,6 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
-import { Bot, Send, X, Minimize2, Maximize2 } from 'lucide-react';
-import type { Module } from '../Dashboard';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bot, Sparkles, Send, User, X, Maximize2, Minimize2, Loader2 } from 'lucide-react';
+
+interface Lesson {
+    id: string;
+    title: string;
+}
+
+interface Module {
+    id: string;
+    title: string;
+    lessonCount: number;
+    lessons?: Lesson[];
+}
 
 interface Message {
     id: string;
@@ -9,48 +20,24 @@ interface Message {
     timestamp: Date;
 }
 
-interface StudentContext {
-    moduleId: string | null;
-    hasMadeSale: boolean | null;
-    role: 'affiliate' | 'producer' | 'both' | null;
-    trafficType: 'organic' | 'paid' | 'hybrid' | null;
-    mainBottleneck: string | null;
-    lastDiagnosticStep: number; // 0 means not started, 1-5 for sequence
-}
-
 interface StudentAIProps {
     modules: Module[];
     isOpen: boolean;
     onClose: () => void;
 }
 
-const AI_MENTOR_IDENTITY = {
-    name: "IA Mentora Oficial",
-    philosophy: "Construção de ativos, estrutura antes de escala, validação antes de investimento.",
-    style: "Profissional, estratégica, firme e orientada a execução.",
-    mission: "Guiar do iniciante ao avançado com visão empresarial."
-};
-
 export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
     const [isMinimized, setIsMinimized] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 'welcome',
-            text: "Olá! Sou a **IA Mentora Oficial**. Minha missão é guiar sua jornada do iniciante ao avançado, garantindo uma execução disciplinada e profissional. \n\nPara que eu possa ser sua bússola estratégica, preciso entender seu momento atual. **Em qual módulo do treinamento você se encontra hoje?**",
+            text: "Olá! Sou seu assistente virtual de Marketing e Vendas. Posso te ajudar com dúvidas sobre o curso ou conceitos como Tráfego Orgânico, Copywriting, etc. O que você gostaria de saber?",
             sender: 'ai',
             timestamp: new Date()
         }
     ]);
     const [inputValue, setInputValue] = useState("");
     const [isTyping, setIsTyping] = useState(false);
-    const [context, setContext] = useState<StudentContext>({
-        moduleId: null,
-        hasMadeSale: null,
-        role: null,
-        trafficType: null,
-        mainBottleneck: null,
-        lastDiagnosticStep: 1
-    });
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -59,215 +46,216 @@ export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, isTyping, isOpen]);
+    }, [messages, isTyping]);
 
     // ------------------------------------------------------------------
     // KNOWLEDGE BASE (Summaries provided by the user)
     // ------------------------------------------------------------------
+    const MODULE_SUMMARIES: Record<string, string> = {
+        "bem vindo(a)": "Neste módulo, você terá uma visão clara de como o treinamento funciona, entenderá a lógica do método e aprenderá a se posicionar corretamente desde o início, criando segurança, clareza e direção para seguir o caminho certo no mercado digital.",
+        "avisos e suporte": "Neste módulo, você terá acesso ao número oficial de suporte do treinamento e ao grupo VIP dos alunos, além de entender todas as regras de funcionamento desses canais. Este módulo também será o espaço onde serão comunicados avisos importantes, atualizações e novidades do treinamento.",
+        "caminho iluminado": "Neste módulo, você irá alinhar sua mentalidade à realidade do mercado digital, compreender o que realmente funciona e aprender desde o básico, adquirindo uma base sólida de conhecimento sobre o mercado digital para evoluir com constância, disciplina e visão de longo prazo.",
+        "afiliado de sucesso": "Neste módulo, você entenderá como funciona o mercado de afiliados, aprenderá a escolher produtos e estratégias de forma consciente e desenvolverá a capacidade de estruturar vendas como afiliado com profissionalismo e consistência.",
+        "como ser produtor": "Neste módulo, você compreenderá a lógica da criação de produtos digitais, aprenderá a estruturar e posicionar seus próprios produtos no mercado e desenvolverá visão de negócio para construir ativos digitais sólidos e escaláveis.",
+        "estrutura de vendas": "Neste módulo, você entenderá como funcionam as engrenagens de uma estrutura de vendas eficiente, aprenderá a montar funis, páginas e ofertas estratégicas e criará sistemas capazes de gerar conversões de forma previsível.",
+        "marketing de conteúdo": "Neste módulo, você aprenderá como o conteúdo influencia decisões de compra, entenderá como construir autoridade no mercado e desenvolverá estratégias de conteúdo que atraem, engajam e convertem o público certo.",
+        "como fazer copywriting": "Neste módulo, você compreenderá a psicologia da venda, aprenderá a utilizar gatilhos mentais de forma ética e estratégica e desenvolverá textos persuasivos que aumentam significativamente suas taxas de conversão.",
+        "como subir caixa rápido": "Neste módulo, você aprenderá estratégias práticas para gerar caixa no curto prazo, entenderá como acelerar resultados financeiros e criar capital inicial para investir de forma estratégica no seu próprio negócio digital.",
+        "tráfego orgânico": "Neste módulo, você entenderá como gerar tráfego e vendas sem investimento em anúncios, aprenderá a usar redes sociais de forma estratégica e desenvolverá consistência através de métodos orgânicos sustentáveis.",
+        "tráfego pago facebook": "Neste módulo, você aprenderá como funciona a lógica dos anúncios pagos, entenderá o comportamento do algoritmo e desenvolverá campanhas no Facebook Ads com controle, estratégia e escalabilidade.",
+        "vendas com o whatsapp": "Neste módulo, você compreenderá como utilizar o WhatsApp como ferramenta de vendas, aprenderá a conduzir conversas estratégicas e desenvolverá abordagens que aumentam a conversão sem pressão ou desgaste.",
+        "inteligência artificial": "Aqui você entenderá como a inteligência artificial pode acelerar processos no marketing digital, aprenderá a aplicá-la na criação de conteúdo, copy e estratégias e ganhará produtividade e vantagem competitiva.",
+        "remarketing estratégico": "Neste módulo, você aprenderá a utilizar o remarketing de forma estratégica para recuperar vendas perdidas, reimpactar potenciais clientes que não compraram no primeiro contato e aumentar suas conversões com ações direcionadas e inteligentes.",
+        "pós-venda inteligente": "Aqui você compreenderá a importância do pós-venda na construção de negócios duradouros, aprenderá a encantar clientes após a compra e desenvolverá estratégias para recompra, fidelização e indicações.",
+        "obrigado": "Neste módulo final, você receberá a mensagem de encerramento do treinamento, reforçando a importância da continuidade, da aplicação do que foi aprendido e deixando o caminho aberto para sua evolução contínua no mercado digital."
+    };
 
     const generateResponse = (query: string): string => {
         const lowerQuery = query.toLowerCase();
 
-        // 1. Diagnostic Protocol Logic
-        if (context.lastDiagnosticStep < 6) {
-            let response = "";
+        // 1. Module Inquiries (Dynamic Lookup)
+        if (lowerQuery.includes('módulo') || lowerQuery.includes('modulo')) {
+            const moduleNumberMatch = lowerQuery.match(/\d+/);
+            if (moduleNumberMatch) {
+                const moduleIndex = parseInt(moduleNumberMatch[0]) - 1;
+                const module = modules[moduleIndex];
 
-            if (context.lastDiagnosticStep === 1) {
-                setContext(prev => ({ ...prev, moduleId: query, lastDiagnosticStep: 2 }));
-                response = "Entendido. Você já realizou alguma venda no mercado digital?";
-            } else if (context.lastDiagnosticStep === 2) {
-                const hasSale = lowerQuery.includes('sim') || lowerQuery.includes('já') || lowerQuery.includes('ja');
-                setContext(prev => ({ ...prev, hasMadeSale: hasSale, lastDiagnosticStep: 3 }));
-                response = "Ótimo. Você atua como **afiliado**, **produtor** ou **ambos**?";
-            } else if (context.lastDiagnosticStep === 3) {
-                let role: StudentContext['role'] = null;
-                if (lowerQuery.includes('afiliado')) role = 'affiliate';
-                if (lowerQuery.includes('produtor')) role = 'producer';
-                if (lowerQuery.includes('ambos')) role = 'both';
-                setContext(prev => ({ ...prev, role, lastDiagnosticStep: 4 }));
-                response = "Perfeito. Seu foco atual de tráfego é **orgânico**, **pago** ou **híbrido**?";
-            } else if (context.lastDiagnosticStep === 4) {
-                let traffic: StudentContext['trafficType'] = null;
-                if (lowerQuery.includes('orgânico') || lowerQuery.includes('organico')) traffic = 'organic';
-                if (lowerQuery.includes('pago')) traffic = 'paid';
-                if (lowerQuery.includes('híbrido') || lowerQuery.includes('hibrido')) traffic = 'hybrid';
-                setContext(prev => ({ ...prev, trafficType: traffic, lastDiagnosticStep: 5 }));
-                response = "Para finalizar o diagnóstico inicial: Qual é o seu **principal gargalo** atual (ex: copy, tráfego, consistência, escala)?";
-            } else if (context.lastDiagnosticStep === 5) {
-                setContext(prev => ({ ...prev, mainBottleneck: query, lastDiagnosticStep: 6 }));
-                response = "Diagnóstico concluído. Agora tenho a base necessária para te mentorar com precisão empresarial. Como posso te direcionar hoje?\n\n*Dica: Você pode me pedir um **Plano de Vendas**, uma **Estrutura de Funil** ou uma **Agenda de Estudos Semana**.*";
+                if (module) {
+                    const rawTitle = (module.title || "").toLowerCase().trim();
+                    const matchedKey = Object.keys(MODULE_SUMMARIES).find(key =>
+                        rawTitle.includes(key) || key.includes(rawTitle)
+                    );
+                    const summary = matchedKey ? MODULE_SUMMARIES[matchedKey] : null;
+
+                    if (summary) {
+                        return `**Módulo ${moduleIndex + 1}: ${module.title}**\n\n${summary}`;
+                    } else {
+                        return `No **Módulo ${moduleIndex + 1}** (${module.title || 'Sem título'}), você vai aprender através de ${module.lessonCount} aulas incríveis. É uma parte fundamental do treinamento!`;
+                    }
+                } else {
+                    return `O módulo ${moduleNumberMatch[0]} ainda não está disponível ou não existe. O curso atualmente tem ${modules.length} módulos.`;
+                }
             }
-            return response;
+            return "Temos vários módulos incríveis! Qual deles você quer saber mais detalhes? (Ex: 'O que tem no módulo 1?')";
         }
 
-        // 2. Specialized Functions (Agenda/Plans)
-        if (lowerQuery.includes('agenda') || lowerQuery.includes('cronograma') || lowerQuery.includes('rotina')) {
-            if (!lowerQuery.includes('acordo') && !lowerQuery.includes('durmo')) {
-                return "**Função: Organizadora de Plano de Ação**\n\nPara criar sua agenda semanal estratégica, preciso de alguns dados:\n1. Que horas você geralmente acorda e dorme?\n2. Quais são seus compromissos fixos (trabalho, faculdade)?\n3. Quanto tempo líquido você tem por dia para o treinamento?";
-            }
-            return "**Minha Sugestão de Agenda Estratégica:**\n\n| Dia | Estudo (40%) | Aplicação (40%) | Descanso (20%) |\n|:--- |:--- |:--- |:--- |\n| Seg-Sex | Módulo Atual | Implementação do Funil | Reflexão e Ajuste |\n| Sáb | Revisão de Métricas | Otimização de Copy | Pausa Mental |\n| Dom | Planejamento Semanal | - | Descanso Total |\n\n✔ **Próximo passo:** Bloqueie esses horários no seu Google Calendar.\n✔ **Métrica:** Horas líquidas aplicadas vs. planejadas.\n✔ **Prazo:** Início imediato na próxima segunda-feira.\n✔ **Erro comum:** Intensidade sem constância. Melhor 1h todo dia que 10h em um único dia.";
+        // 2. Marketing Concepts
+        if (lowerQuery.includes('tráfego orgânico') || lowerQuery.includes('trafego organico')) {
+            return "**Tráfego Orgânico** é a atração de visitantes para seus canais (site, redes sociais) sem pagar por anúncios. É construído através de conteúdo relevante, SEO e engajamento genuíno. No longo prazo, é o ativo mais valioso do seu negócio!";
+        }
+        if (lowerQuery.includes('tráfego pago') || lowerQuery.includes('trafego pago')) {
+            return "**Tráfego Pago** envolve investir dinheiro em plataformas como Google Ads ou Facebook Ads para mostrar seu conteúdo para um público específico imediatamente. É ótimo para escalar resultados rápidos.";
+        }
+        if (lowerQuery.includes('copy') || lowerQuery.includes('copywriting')) {
+            return "**Copywriting** é a arte de escrever textos persuasivos com o objetivo de levar o leitor a tomar uma ação, seja comprar um produto, se cadastrar ou engajar com seu conteúdo.";
+        }
+        if (lowerQuery.includes('vendas') || lowerQuery.includes('vender')) {
+            return "Vendas no digital se baseiam em **Confiança + Oferta**. Você precisa primeiro gerar valor e confiança, para depois apresentar uma solução (seu produto) que resolva a dor do cliente.";
         }
 
-        if (lowerQuery.includes('vendas') || lowerQuery.includes('vender') || lowerQuery.includes('plano')) {
-            if (context.hasMadeSale === false) {
-                return "**Plano de Vendas Estratégico (Nível 1 - Iniciante)**\n\nSeu foco agora é **Validação antes de Escala**.\n\n1. **Objetivo:** Realizar a primeira venda em 15-30 dias.\n2. **Estrutura:** Funil direto via WhatsApp (Orgânico ou Tráfego Pago de Baixo Custo).\n3. **Ação:** Foque 100% no Módulo 'Vendas com o WhatsApp'.\n\n✔ **Próximo passo:** Defina sua oferta e valide o script de vendas.\n✔ **Métrica:** Número de abordagens vs. conversões.\n✔ **Prazo:** Validação da oferta em 7 dias.\n✔ **Erro comum:** Tentar escalar anúncios antes de saber vender no 1 a 1.";
-            }
-            return "**Plano de Expansão Estratégica (Nível 2-3)**\n\nComo você já validou sua oferta, o foco é **Previsibilidade**.\n\n1. **Objetivo:** Estabilizar o volume diário de leads.\n2. **Estrutura:** Página de Vendas + Remarketing Estratégico.\n3. **Ação:** Otimize sua taxa de cliques (CTR) no tráfego pago.\n\n✔ **Próximo passo:** Implementar o Pixel de conversão em todas as etapas.\n✔ **Métrica:** CAC (Custo por Aquisição de Cliente).\n✔ **Prazo:** Próximos 15 dias.\n✔ **Erro comum:** Escalar tráfego com funil apresentando furos na conversão.";
-        }
-
-        // Default: Strategic Mentoring
-        return `Como sua **${AI_MENTOR_IDENTITY.name}**, subordinada à metodologia de Breno de Sena, lembro que o mercado digital recompensa **consistência**, não impulsividade. 
-
-Para te dar uma resposta precisa, foque na sua pergunta: você busca clareza técnica de um módulo ou uma decisão tática de negócio?
-
-✔ **Próximo passo:** Revise o conceito de ativos digitais no Módulo 1.
-✔ **Métrica:** Horas de implementação prática hoje.
-✔ **Erro comum:** Buscar atalhos antes de validar a estrutura básica.`;
+        return "Interessante pergunta! Como sou uma IA em treinamento focada no curso, ainda estou aprendendo sobre alguns detalhes específicos. Tente me perguntar sobre os módulos (Ex: 'O que aprendo no módulo 3?') ou conceitos básicos de marketing!";
     };
 
     const handleSend = async () => {
         if (!inputValue.trim()) return;
 
-        const userMsg: Message = {
+        const userMessage: Message = {
             id: Date.now().toString(),
             text: inputValue,
             sender: 'user',
             timestamp: new Date()
         };
 
-        setMessages(prev => [...prev, userMsg]);
+        setMessages(prev => [...prev, userMessage]);
         setInputValue("");
         setIsTyping(true);
 
-        // Simulate AI "Thinking" time
+        // Simulate AI thinking delay
         setTimeout(() => {
-            const responseText = generateResponse(userMsg.text);
-
-            const aiMsg: Message = {
+            const aiResponse: Message = {
                 id: (Date.now() + 1).toString(),
-                text: responseText,
+                text: generateResponse(userMessage.text),
                 sender: 'ai',
                 timestamp: new Date()
             };
-
-            setMessages(prev => [...prev, aiMsg]);
+            setMessages(prev => [...prev, aiResponse]);
             setIsTyping(false);
-        }, 1500 + Math.random() * 1000); // 1.5s to 2.5s simulated delay
+        }, 1200);
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
+    if (!isOpen) return null;
 
     return (
-        <>
-            {/* Chat Window */}
-            {isOpen && (
-                <div className={`fixed z-50 transition-all duration-300 ${isMinimized
-                    ? 'bottom-0 right-8 w-80 h-14 rounded-t-xl'
-                    : 'bottom-8 right-4 w-[85vw] sm:w-[380px] md:w-[400px] h-[500px] sm:h-[550px] md:h-[600px] max-h-[75vh] sm:max-h-[80vh] rounded-2xl'
-                    } bg-black/90 backdrop-blur-xl border border-gold-500/20 shadow-[0_0_50px_-10px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden ring-1 ring-white/10`}>
-
-                    {/* Header */}
-                    <div
-                        className="p-4 bg-linear-to-r from-gold-500/10 to-transparent border-b border-white/5 flex items-center justify-between cursor-pointer"
-                        onClick={() => !isMinimized && setIsMinimized(!isMinimized)}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37]/20 to-[#F4D03F]/20 flex items-center justify-center border border-[#D4AF37]/40">
-                                <Bot size={24} className="text-[#F4D03F]" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-white text-sm">IA Mentor</h3>
-                                <p className="text-[10px] text-gold-400 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                    Online agora
-                                </p>
-                            </div>
+        <div
+            className={`fixed bottom-0 right-0 z-50 transition-all duration-500 transform ${isMinimized ? 'translate-y-[calc(100%-60px)] h-auto' : 'translate-y-0 h-[600px]'
+                } w-[400px] max-w-[95vw] pr-4 pb-4`}
+        >
+            <div className="bg-black-900/95 backdrop-blur-xl border border-white/10 rounded-2xl h-full shadow-2xl flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Bot size={20} className="text-gold-400" />
+                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-black-900 shadow-sm" />
                         </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}
-                                className="p-2 hover:bg-white/5 rounded-lg text-white/50 hover:text-white transition-colors"
-                            >
-                                {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onClose(); }}
-                                className="p-2 hover:bg-red-500/20 rounded-lg text-white/50 hover:text-red-500 transition-colors"
-                            >
-                                <X size={18} />
-                            </button>
+                        <div>
+                            <h3 className="text-sm font-bold text-white tracking-widest uppercase">IA Mentor</h3>
+                            <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                                <Sparkles size={10} className="text-gold-500" />
+                                Online e Pronto
+                            </span>
                         </div>
                     </div>
-
-                    {/* Messages Area - Only visible if not minimized */}
-                    {!isMinimized && (
-                        <>
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gold-500/20 scrollbar-track-transparent">
-                                {messages.map((msg) => (
-                                    <div
-                                        key={msg.id}
-                                        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                                    >
-                                        <div
-                                            className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed ${msg.sender === 'user'
-                                                ? 'bg-gold-500 text-black font-medium rounded-tr-sm'
-                                                : 'bg-white/10 text-white/90 rounded-tl-sm border border-white/5'
-                                                } animate-in fade-in slide-in-from-bottom-2 duration-300`}
-                                        >
-                                            {/* Simple formatting for bold text */}
-                                            {msg.text.split('**').map((part, i) =>
-                                                i % 2 === 1 ? <strong key={i} className="font-extrabold">{part}</strong> : part
-                                            )}
-                                            <div className={`text-[10px] mt-1 opacity-50 ${msg.sender === 'user' ? 'text-black' : 'text-white'} text-right`}>
-                                                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {isTyping && (
-                                    <div className="flex justify-start">
-                                        <div className="bg-white/5 rounded-2xl rounded-tl-sm p-4 border border-white/5 flex gap-1.5 items-center">
-                                            <div className="w-2 h-2 rounded-full bg-gold-400/50 animate-bounce [animation-delay:-0.3s]" />
-                                            <div className="w-2 h-2 rounded-full bg-gold-400/50 animate-bounce [animation-delay:-0.15s]" />
-                                            <div className="w-2 h-2 rounded-full bg-gold-400/50 animate-bounce" />
-                                        </div>
-                                    </div>
-                                )}
-                                <div ref={messagesEndRef} />
-                            </div>
-
-                            {/* Input Area */}
-                            <div className="p-4 bg-black/40 border-t border-white/5">
-                                <div className="relative flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        value={inputValue}
-                                        onChange={(e) => setInputValue(e.target.value)}
-                                        onKeyDown={handleKeyPress}
-                                        placeholder="Pergunte sobre o curso ou marketing..."
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-4 text-white placeholder-white/30 focus:outline-none focus:border-gold-500/50 focus:bg-white/10 transition-all text-sm"
-                                    />
-                                    <button
-                                        onClick={handleSend}
-                                        disabled={!inputValue.trim() || isTyping}
-                                        className="absolute right-2 p-2 bg-gold-500 rounded-lg text-black hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <Send size={18} />
-                                    </button>
-                                </div>
-                                <div className="text-center mt-2">
-                                    <p className="text-[10px] text-white/20">A IA pode cometer erros. Verifique informações importantes.</p>
-                                </div>
-                            </div>
-                        </>
-                    )}
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsMinimized(!isMinimized)}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400"
+                        >
+                            {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
                 </div>
-            )}
-        </>
+
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
+                    {messages.map((message) => (
+                        <div
+                            key={message.id}
+                            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                            <div className={`flex gap-3 max-w-[85%] ${message.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${message.sender === 'user'
+                                        ? 'bg-black-800 border-white/10'
+                                        : 'bg-gold-500/10 border-gold-500/50'
+                                    }`}>
+                                    {message.sender === 'user' ? <User size={14} className="text-zinc-400" /> : <Bot size={14} className="text-gold-500" />}
+                                </div>
+                                <div className={`p-4 rounded-2xl text-sm leading-relaxed ${message.sender === 'user'
+                                        ? 'bg-white/5 text-zinc-100 rounded-tr-none border border-white/5'
+                                        : 'bg-black-800 text-zinc-300 rounded-tl-none border border-white/10'
+                                    } shadow-lg`}>
+                                    {message.text.split('\n').map((line, i) => (
+                                        <p key={i} className={i > 0 ? 'mt-3' : ''}>
+                                            {line}
+                                        </p>
+                                    ))}
+                                    <span className="text-[10px] text-zinc-600 block mt-2 opacity-50">
+                                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {isTyping && (
+                        <div className="flex justify-start">
+                            <div className="flex gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gold-500/10 border border-gold-500/50 flex items-center justify-center">
+                                    <Loader2 size={14} className="text-gold-500 animate-spin" />
+                                </div>
+                                <div className="px-5 py-3 rounded-2xl bg-black-800 border border-white/10 flex gap-1">
+                                    <span className="w-1.5 h-1.5 bg-gold-400/50 rounded-full animate-bounce" />
+                                    <span className="w-1.5 h-1.5 bg-gold-400/50 rounded-full animate-bounce [animation-delay:0.2s]" />
+                                    <span className="w-1.5 h-1.5 bg-gold-400/50 rounded-full animate-bounce [animation-delay:0.4s]" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input Area */}
+                <div className="p-4 bg-white/5 border-t border-white/10">
+                    <div className="relative flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                            placeholder="Pergunte sobre os módulos ou marketing..."
+                            className="flex-1 bg-black-800 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-gold-500/50 transition-all"
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={!inputValue.trim() || isTyping}
+                            className={`p-3 rounded-xl transition-all ${!inputValue.trim() || isTyping
+                                    ? 'bg-zinc-800 text-zinc-600 grayscale cursor-not-allowed'
+                                    : 'bg-gold-600 hover:bg-gold-500 text-white shadow-[0_0_15px_rgba(212,175,55,0.3)]'
+                                }`}
+                        >
+                            <Send size={18} />
+                        </button>
+                    </div>
+                    <div className="mt-3 flex justify-center">
+                        <span className="text-[9px] text-zinc-600 uppercase tracking-widest font-medium">Breno de Sena • IA de Apoio</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
