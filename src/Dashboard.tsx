@@ -445,27 +445,27 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
             <nav className="w-full z-50 absolute top-0 left-0 pointer-events-none">
 
                 {/* Nav Content */}
-                <div className="relative px-8 py-6 flex justify-between items-center pointer-events-auto">
+                <div className="relative px-4 pt-5 pb-4 sm:px-8 sm:py-6 flex justify-between items-center pointer-events-auto">
                     <div className="relative z-50">
-                        <img src="/logo-design.png" alt="Logo" className="h-10 object-contain mix-blend-screen drop-shadow-md" />
+                        <img src="/logo-design.png" alt="Logo" className="h-8 sm:h-10 object-contain mix-blend-screen drop-shadow-md" />
                     </div>
 
-                    <div className="flex items-center gap-6 relative z-50">
+                    <div className="flex items-center gap-3 sm:gap-6 relative z-50">
                         {/* IA Mentor Premium Button */}
                         <div
                             onClick={() => setIsAIOpen(true)}
-                            className="flex items-center gap-3 px-5 py-2.5 bg-linear-to-r from-gold-600/20 via-gold-500/10 to-transparent border border-gold-500/30 rounded-full cursor-pointer hover:border-gold-400 group transition-all duration-300 shadow-[0_0_20px_rgba(212,175,55,0.05)] active:scale-95"
+                            className="flex items-center gap-2 sm:gap-3 px-3 py-1.5 sm:px-5 sm:py-2.5 bg-linear-to-r from-gold-600/20 via-gold-500/10 to-transparent border border-gold-500/30 rounded-full cursor-pointer hover:border-gold-400 group transition-all duration-300 shadow-[0_0_20px_rgba(212,175,55,0.05)] active:scale-95"
                         >
                             <div className="relative">
-                                <Bot size={18} className="text-gold-400 group-hover:rotate-12 transition-transform" />
-                                <Sparkles size={8} className="absolute -top-1 -right-1 text-gold-200 animate-pulse" />
+                                <Bot size={14} className="sm:size-[18px] text-gold-400 group-hover:rotate-12 transition-transform" />
+                                <Sparkles size={6} className="sm:size-[8px] absolute -top-1 -right-1 text-gold-200 animate-pulse" />
                             </div>
-                            <span className="text-[11px] font-bold text-white uppercase tracking-[0.2em] group-hover:text-gold-400 transition-colors">IA Mentor</span>
+                            <span className="text-[9px] sm:text-[11px] font-bold text-white uppercase tracking-[0.1em] sm:tracking-[0.2em] group-hover:text-gold-400 transition-colors">IA Mentor</span>
                         </div>
 
                         <div
                             onClick={() => setIsProfileOpen(true)}
-                            className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity group"
+                            className="flex items-center gap-2 sm:gap-4 cursor-pointer hover:opacity-80 transition-opacity group"
                         >
                             <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/20 group-hover:border-gold-400/50 transition-colors">
                                 {userImage ? (
