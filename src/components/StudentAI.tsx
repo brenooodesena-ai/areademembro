@@ -9,24 +9,48 @@ interface Message {
     timestamp: Date;
 }
 
+interface StudentContext {
+    moduleId: string | null;
+    hasMadeSale: boolean | null;
+    role: 'affiliate' | 'producer' | 'both' | null;
+    trafficType: 'organic' | 'paid' | 'hybrid' | null;
+    mainBottleneck: string | null;
+    lastDiagnosticStep: number; // 0 means not started, 1-5 for sequence
+}
+
 interface StudentAIProps {
     modules: Module[];
     isOpen: boolean;
     onClose: () => void;
 }
 
+const AI_MENTOR_IDENTITY = {
+    name: "IA Mentora Oficial",
+    philosophy: "Construção de ativos, estrutura antes de escala, validação antes de investimento.",
+    style: "Profissional, estratégica, firme e orientada a execução.",
+    mission: "Guiar do iniciante ao avançado com visão empresarial."
+};
+
 export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
-    const [isMinimized, setIsMinimized] = useState(false); // If we want a minimized bar state
+    const [isMinimized, setIsMinimized] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 'welcome',
-            text: "Olá! Sou seu assistente virtual de Marketing e Vendas. Posso te ajudar com dúvidas sobre o curso ou conceitos como Tráfego Orgânico, Copywriting, etc. O que você gostaria de saber?",
+            text: "Olá! Sou a **IA Mentora Oficial**. Minha missão é guiar sua jornada do iniciante ao avançado, garantindo uma execução disciplinada e profissional. \n\nPara que eu possa ser sua bússola estratégica, preciso entender seu momento atual. **Em qual módulo do treinamento você se encontra hoje?**",
             sender: 'ai',
             timestamp: new Date()
         }
     ]);
     const [inputValue, setInputValue] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    const [context, setContext] = useState<StudentContext>({
+        moduleId: null,
+        hasMadeSale: null,
+        role: null,
+        trafficType: null,
+        mainBottleneck: null,
+        lastDiagnosticStep: 1
+    });
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -40,81 +64,65 @@ export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
     // ------------------------------------------------------------------
     // KNOWLEDGE BASE (Summaries provided by the user)
     // ------------------------------------------------------------------
-    const MODULE_SUMMARIES: Record<string, string> = {
-        "bem vindo(a)": "Neste módulo, você terá uma visão clara de como o treinamento funciona, entenderá a lógica do método e aprenderá a se posicionar corretamente desde o início, criando segurança, clareza e direção para seguir o caminho certo no mercado digital.",
-        "avisos e suporte": "Neste módulo, você terá acesso ao número oficial de suporte do treinamento e ao grupo VIP dos alunos, além de entender todas as regras de funcionamento desses canais. Este módulo também será o espaço onde serão comunicados avisos importantes, atualizações e novidades do treinamento.",
-        "caminho iluminado": "Neste módulo, você irá alinhar sua mentalidade à realidade do mercado digital, compreender o que realmente funciona e aprender desde o básico, adquirindo uma base sólida de conhecimento sobre o mercado digital para evoluir com constância, disciplina e visão de longo prazo.",
-        "afiliado de sucesso": "Neste módulo, você entenderá como funciona o mercado de afiliados, aprenderá a escolher produtos e estratégias de forma consciente e desenvolverá a capacidade de estruturar vendas como afiliado com profissionalismo e consistência.",
-        "como ser produtor": "Neste módulo, você compreenderá a lógica da criação de produtos digitais, aprenderá a estruturar e posicionar seus próprios produtos no mercado e desenvolverá visão de negócio para construir ativos digitais sólidos e escaláveis.",
-        "estrutura de vendas": "Neste módulo, você entenderá como funcionam as engrenagens de uma estrutura de vendas eficiente, aprenderá a montar funis, páginas e ofertas estratégicas e criará sistemas capazes de gerar conversões de forma previsível.",
-        "marketing de conteúdo": "Neste módulo, você aprenderá como o conteúdo influencia decisões de compra, entenderá como construir autoridade no mercado e desenvolverá estratégias de conteúdo que atraem, engajam e convertem o público certo.",
-        "como fazer copywriting": "Neste módulo, você compreenderá a psicologia da venda, aprenderá a utilizar gatilhos mentais de forma ética e estratégica e desenvolverá textos persuasivos que aumentam significativamente suas taxas de conversão.",
-        "como subir caixa rápido": "Neste módulo, você aprenderá estratégias práticas para gerar caixa no curto prazo, entenderá como acelerar resultados financeiros e criar capital inicial para investir de forma estratégica no seu próprio negócio digital.",
-        "tráfego orgânico": "Neste módulo, você entenderá como gerar tráfego e vendas sem investimento em anúncios, aprenderá a usar redes sociais de forma estratégica e desenvolverá consistência através de métodos orgânicos sustentáveis.",
-        "tráfego pago facebook": "Neste módulo, você aprenderá como funciona a lógica dos anúncios pagos, entenderá o comportamento do algoritmo e desenvolverá campanhas no Facebook Ads com controle, estratégia e escalabilidade.",
-        "vendas com o whatsapp": "Neste módulo, você compreenderá como utilizar o WhatsApp como ferramenta de vendas, aprenderá a conduzir conversas estratégicas e desenvolverá abordagens que aumentam a conversão sem pressão ou desgaste.",
-        "inteligência artificial": "Aqui você entenderá como a inteligência artificial pode acelerar processos no marketing digital, aprenderá a aplicá-la na criação de conteúdo, copy e estratégias e ganhará produtividade e vantagem competitiva.",
-        "remarketing estratégico": "Neste módulo, você aprenderá a utilizar o remarketing de forma estratégica para recuperar vendas perdidas, reimpactar potenciais clientes que não compraram no primeiro contato e aumentar suas conversões com ações direcionadas e inteligentes.",
-        "pós-venda inteligente": "Aqui você compreenderá a importância do pós-venda na construção de negócios duradouros, aprenderá a encantar clientes após a compra e desenvolverá estratégias para recompra, fidelização e indicações.",
-        "obrigado": "Neste módulo final, você receberá a mensagem de encerramento do treinamento, reforçando a importância da continuidade, da aplicação do que foi aprendido e deixando o caminho aberto para sua evolução contínua no mercado digital."
-    };
 
     const generateResponse = (query: string): string => {
         const lowerQuery = query.toLowerCase();
 
-        // 1. Module Inquiries (Dynamic Lookup)
-        // Matches "módulo X", "modulo X", "módulo number", etc.
-        if (lowerQuery.includes('módulo') || lowerQuery.includes('modulo')) {
-            const moduleNumberMatch = lowerQuery.match(/\d+/);
-            if (moduleNumberMatch) {
-                const moduleIndex = parseInt(moduleNumberMatch[0]) - 1;
-                const module = modules[moduleIndex]; // Get module by CURRENT position
+        // 1. Diagnostic Protocol Logic
+        if (context.lastDiagnosticStep < 6) {
+            let response = "";
 
-                if (module) {
-                    // Normalize title key safe string access
-                    const rawTitle = (module.title || "").toLowerCase().trim();
-
-                    // Fuzzy Match Logic: Find key that is contained in title OR title contained in key
-                    const matchedKey = Object.keys(MODULE_SUMMARIES).find(key =>
-                        rawTitle.includes(key) || key.includes(rawTitle)
-                    );
-
-                    const summary = matchedKey ? MODULE_SUMMARIES[matchedKey] : null;
-
-                    console.log(`🤖 AI Debug: Index=${moduleIndex}, Title="${rawTitle}", MatchedKey="${matchedKey}", SummaryFound=${!!summary}`);
-
-                    if (summary) {
-                        return `**Módulo ${moduleIndex + 1}: ${module.title}**\n\n${summary}`;
-                    } else {
-                        // Fallback if summary is missing for some reason
-                        return `No **Módulo ${moduleIndex + 1}** (${module.title || 'Sem título'}), você vai aprender através de ${module.lessonCount} aulas incríveis. É uma parte fundamental do treinamento!`;
-                    }
-                } else {
-                    return `O módulo ${moduleNumberMatch[0]} ainda não está disponível ou não existe. O curso atualmente tem ${modules.length} módulos.`;
-                }
+            if (context.lastDiagnosticStep === 1) {
+                setContext(prev => ({ ...prev, moduleId: query, lastDiagnosticStep: 2 }));
+                response = "Entendido. Você já realizou alguma venda no mercado digital?";
+            } else if (context.lastDiagnosticStep === 2) {
+                const hasSale = lowerQuery.includes('sim') || lowerQuery.includes('já') || lowerQuery.includes('ja');
+                setContext(prev => ({ ...prev, hasMadeSale: hasSale, lastDiagnosticStep: 3 }));
+                response = "Ótimo. Você atua como **afiliado**, **produtor** ou **ambos**?";
+            } else if (context.lastDiagnosticStep === 3) {
+                let role: StudentContext['role'] = null;
+                if (lowerQuery.includes('afiliado')) role = 'affiliate';
+                if (lowerQuery.includes('produtor')) role = 'producer';
+                if (lowerQuery.includes('ambos')) role = 'both';
+                setContext(prev => ({ ...prev, role, lastDiagnosticStep: 4 }));
+                response = "Perfeito. Seu foco atual de tráfego é **orgânico**, **pago** ou **híbrido**?";
+            } else if (context.lastDiagnosticStep === 4) {
+                let traffic: StudentContext['trafficType'] = null;
+                if (lowerQuery.includes('orgânico') || lowerQuery.includes('organico')) traffic = 'organic';
+                if (lowerQuery.includes('pago')) traffic = 'paid';
+                if (lowerQuery.includes('híbrido') || lowerQuery.includes('hibrido')) traffic = 'hybrid';
+                setContext(prev => ({ ...prev, trafficType: traffic, lastDiagnosticStep: 5 }));
+                response = "Para finalizar o diagnóstico inicial: Qual é o seu **principal gargalo** atual (ex: copy, tráfego, consistência, escala)?";
+            } else if (context.lastDiagnosticStep === 5) {
+                setContext(prev => ({ ...prev, mainBottleneck: query, lastDiagnosticStep: 6 }));
+                response = "Diagnóstico concluído. Agora tenho a base necessária para te mentorar com precisão empresarial. Como posso te direcionar hoje?\n\n*Dica: Você pode me pedir um **Plano de Vendas**, uma **Estrutura de Funil** ou uma **Agenda de Estudos Semana**.*";
             }
-            return "Temos vários módulos incríveis! Qual deles você quer saber mais detalhes? (Ex: 'O que tem no módulo 1?')";
+            return response;
         }
 
-        // 2. Marketing Concepts (Mock Knowledge Base)
-        if (lowerQuery.includes('tráfego orgânico') || lowerQuery.includes('trafego organico')) {
-            return "**Tráfego Orgânico** é a atração de visitantes para seus canais (site, redes sociais) sem pagar por anúncios. É construído através de conteúdo relevante, SEO e engajamento genuíno. No longo prazo, é o ativo mais valioso do seu negócio!";
-        }
-        if (lowerQuery.includes('tráfego pago') || lowerQuery.includes('trafego pago')) {
-            return "**Tráfego Pago** envolve investir dinheiro em plataformas como Google Ads ou Facebook Ads para mostrar seu conteúdo para um público específico imediatamente. É ótimo para escalar resultados rápidos.";
-        }
-        if (lowerQuery.includes('copy') || lowerQuery.includes('copywriting')) {
-            return "**Copywriting** é a arte de escrever textos persuasivos com o objetivo de levar o leitor a tomar uma ação, seja comprar um produto, se cadastrar ou engajar com seu conteúdo.";
-        }
-        if (lowerQuery.includes('vendas') || lowerQuery.includes('vender')) {
-            return "Vendas no digital se baseiam em **Confiança + Oferta**. Você precisa primeiro gerar valor e confiança, para depois apresentar uma solução (seu produto) que resolva a dor do cliente.";
-        }
-        if (lowerQuery.includes('plr')) {
-            return "**PLR (Private Label Rights)** são produtos com direitos de revenda. Você compra o produto e o direito de vendê-lo como se fosse seu.";
+        // 2. Specialized Functions (Agenda/Plans)
+        if (lowerQuery.includes('agenda') || lowerQuery.includes('cronograma') || lowerQuery.includes('rotina')) {
+            if (!lowerQuery.includes('acordo') && !lowerQuery.includes('durmo')) {
+                return "**Função: Organizadora de Plano de Ação**\n\nPara criar sua agenda semanal estratégica, preciso de alguns dados:\n1. Que horas você geralmente acorda e dorme?\n2. Quais são seus compromissos fixos (trabalho, faculdade)?\n3. Quanto tempo líquido você tem por dia para o treinamento?";
+            }
+            return "**Minha Sugestão de Agenda Estratégica:**\n\n| Dia | Estudo (40%) | Aplicação (40%) | Descanso (20%) |\n|:--- |:--- |:--- |:--- |\n| Seg-Sex | Módulo Atual | Implementação do Funil | Reflexão e Ajuste |\n| Sáb | Revisão de Métricas | Otimização de Copy | Pausa Mental |\n| Dom | Planejamento Semanal | - | Descanso Total |\n\n✔ **Próximo passo:** Bloqueie esses horários no seu Google Calendar.\n✔ **Métrica:** Horas líquidas aplicadas vs. planejadas.\n✔ **Prazo:** Início imediato na próxima segunda-feira.\n✔ **Erro comum:** Intensidade sem constância. Melhor 1h todo dia que 10h em um único dia.";
         }
 
-        // 3. Fallback
-        return "Interessante pergunta! Como sou uma IA em treinamento focada no curso, ainda estou aprendendo sobre alguns detalhes específicos. Tente me perguntar sobre os módulos (Ex: 'O que aprendo no módulo 3?') ou conceitos básicos de marketing!";
+        if (lowerQuery.includes('vendas') || lowerQuery.includes('vender') || lowerQuery.includes('plano')) {
+            if (context.hasMadeSale === false) {
+                return "**Plano de Vendas Estratégico (Nível 1 - Iniciante)**\n\nSeu foco agora é **Validação antes de Escala**.\n\n1. **Objetivo:** Realizar a primeira venda em 15-30 dias.\n2. **Estrutura:** Funil direto via WhatsApp (Orgânico ou Tráfego Pago de Baixo Custo).\n3. **Ação:** Foque 100% no Módulo 'Vendas com o WhatsApp'.\n\n✔ **Próximo passo:** Defina sua oferta e valide o script de vendas.\n✔ **Métrica:** Número de abordagens vs. conversões.\n✔ **Prazo:** Validação da oferta em 7 dias.\n✔ **Erro comum:** Tentar escalar anúncios antes de saber vender no 1 a 1.";
+            }
+            return "**Plano de Expansão Estratégica (Nível 2-3)**\n\nComo você já validou sua oferta, o foco é **Previsibilidade**.\n\n1. **Objetivo:** Estabilizar o volume diário de leads.\n2. **Estrutura:** Página de Vendas + Remarketing Estratégico.\n3. **Ação:** Otimize sua taxa de cliques (CTR) no tráfego pago.\n\n✔ **Próximo passo:** Implementar o Pixel de conversão em todas as etapas.\n✔ **Métrica:** CAC (Custo por Aquisição de Cliente).\n✔ **Prazo:** Próximos 15 dias.\n✔ **Erro comum:** Escalar tráfego com funil apresentando furos na conversão.";
+        }
+
+        // Default: Strategic Mentoring
+        return `Como sua **${AI_MENTOR_IDENTITY.name}**, subordinada à metodologia de Breno de Sena, lembro que o mercado digital recompensa **consistência**, não impulsividade. 
+
+Para te dar uma resposta precisa, foque na sua pergunta: você busca clareza técnica de um módulo ou uma decisão tática de negócio?
+
+✔ **Próximo passo:** Revise o conceito de ativos digitais no Módulo 1.
+✔ **Métrica:** Horas de implementação prática hoje.
+✔ **Erro comum:** Buscar atalhos antes de validar a estrutura básica.`;
     };
 
     const handleSend = async () => {
