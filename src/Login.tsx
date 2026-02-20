@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, ArrowRight, User, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, AlertCircle, CheckCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { db } from './lib/db';
 import { hashPassword } from './lib/auth';
 
@@ -14,6 +14,7 @@ export function Login({ onLogin }: LoginProps) {
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Forgot Password State
     const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -302,14 +303,21 @@ export function Login({ onLogin }: LoginProps) {
                                             <Lock size={20} />
                                         </div>
                                         <input
-                                            type="password"
+                                            type={showPassword ? "text" : "password"}
                                             placeholder="Mínimo 6 caracteres"
-                                            className="input-premium !pl-14 relative"
+                                            className="input-premium !pl-14 !pr-12 relative"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
                                             disabled={isLoading}
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/40 hover:text-gold-400 transition-colors z-20 cursor-pointer"
+                                        >
+                                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -392,14 +400,21 @@ export function Login({ onLogin }: LoginProps) {
                                         <Lock size={20} />
                                     </div>
                                     <input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         placeholder={isLogin ? 'Sua senha' : 'Mínimo 6 caracteres'}
-                                        className="input-premium !pl-14 relative"
+                                        className="input-premium !pl-14 !pr-12 relative"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required
                                         disabled={isLoading}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/40 hover:text-gold-400 transition-colors z-20 cursor-pointer"
+                                    >
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
                                 </div>
                                 {isLogin && (
                                     <div className="flex justify-end">
