@@ -1288,84 +1288,31 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                             onChange={(e) => setNewLessonDescription(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
                                         />
-                                        {/* Video Source Selection */}
-                                        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
-                                            <button
-                                                onClick={() => setVideoSourceType('link')}
-                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${videoSourceType === 'link' ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/10' : 'text-white/40 hover:text-white/60'}`}
-                                            >
-                                                <LinkIcon size={14} /> Link (YouTube/Vimeo)
-                                            </button>
-                                            <button
-                                                onClick={() => setVideoSourceType('upload')}
-                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${videoSourceType === 'upload' ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/10' : 'text-white/40 hover:text-white/60'}`}
-                                            >
-                                                <Upload size={14} /> Upload Arquivo
-                                            </button>
-                                        </div>
-
-                                        {videoSourceType === 'link' ? (
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                                                        <LinkIcon size={12} /> URL do Vídeo
-                                                    </label>
-                                                    <span className="text-[10px] text-gold-500/60 font-medium">Instantâneo</span>
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Cole o link do YouTube, Vimeo ou Panda..."
-                                                    className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
-                                                    value={newLessonVideoId}
-                                                    onChange={(e) => setNewLessonVideoId(e.target.value)}
-                                                    onKeyDown={(e) => e.stopPropagation()}
-                                                />
-                                                <p className="text-[10px] text-white/20">Suporta YouTube, Vimeo, PandaVideo, etc.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="relative group">
-                                                <div className={`w-full bg-black border border-dashed ${newLessonVideoId ? 'border-green-500/50' : 'border-white/10'} rounded-lg px-4 py-8 flex flex-col items-center justify-center gap-3 transition-colors hover:border-gold-500/30`}>
-                                                    <div className="p-3 bg-white/5 rounded-full group-hover:bg-gold-500/10 transition-colors">
-                                                        <Upload size={24} className={`${newLessonVideoId ? 'text-green-500' : 'text-white/40 group-hover:text-gold-500'} transition-colors`} />
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-sm font-bold text-white">
-                                                            {newLessonVideoId ? 'Vídeo Selecionado' : 'Exportar Vídeo'}
-                                                        </p>
-                                                        <p className="text-xs text-white/40 mt-1">
-                                                            {newLessonVideoId ? 'Pronto para salvar' : 'Arraste ou clique (MP4)'}
-                                                        </p>
-                                                    </div>
-                                                    <input
-                                                        type="file"
-                                                        accept="video/*"
-                                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                const url = URL.createObjectURL(file);
-                                                                setNewLessonVideoId(url);
-                                                                setSelectedVideoFile(file);
-                                                                alert("Vídeo selecionado com sucesso!");
-                                                            }
-                                                            e.target.value = ''; // Reset input to allow re-uploading the same file
-                                                        }}
-                                                    />
-                                                </div>
+                                        {/* URL do Vídeo */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                                                    <LinkIcon size={12} /> Link do Vídeo
+                                                </label>
                                                 {newLessonVideoId && (
                                                     <button
-                                                        onClick={() => {
-                                                            setNewLessonVideoId("");
-                                                            setSelectedVideoFile(null);
-                                                        }}
-                                                        className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-red-500/20 text-white/60 hover:text-red-500 rounded-full transition-all border border-white/10 hover:border-red-500/30 shadow-lg"
-                                                        title="Remover vídeo"
+                                                        onClick={() => setNewLessonVideoId("")}
+                                                        className="text-[10px] text-red-500/60 hover:text-red-500 transition-colors flex items-center gap-1"
                                                     >
-                                                        <Trash2 size={16} />
+                                                        <Trash2 size={10} /> Remover
                                                     </button>
                                                 )}
                                             </div>
-                                        )}
+                                            <input
+                                                type="text"
+                                                placeholder="Cole o link do Bunny.net, YouTube ou Vimeo..."
+                                                className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
+                                                value={newLessonVideoId}
+                                                onChange={(e) => setNewLessonVideoId(e.target.value)}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                            <p className="text-[10px] text-white/20">Suporta Bunny.net, YouTube, Vimeo e afins.</p>
+                                        </div>
 
                                         {/* Thumbnail Upload Area (Optional) */}
                                         <div className="relative group">

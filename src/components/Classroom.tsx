@@ -105,7 +105,12 @@ export function Classroom({ module, onBack }: ClassroomProps) {
                                             return <iframe src={`https://player.pandavideo.com.br/embed/${id}`} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />;
                                         }
 
-                                        // Default: Native Video Tag
+                                        // Bunny.net Stream (iframe.mediadelivery.net ou videodelivery.net)
+                                        if (url.includes('iframe.mediadelivery.net') || url.includes('videodelivery.net')) {
+                                            return <iframe src={url} className="w-full h-full" allowFullScreen allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture" />;
+                                        }
+
+                                        // Default: Native Video Tag (fallback)
                                         return (
                                             <video
                                                 key={url}
