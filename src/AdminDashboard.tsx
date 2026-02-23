@@ -71,7 +71,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
     const [newLessonVideoId, setNewLessonVideoId] = useState("");
     const [newLessonThumbnail, setNewLessonThumbnail] = useState("");
     const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
-    const [newLessonReleaseDays, setNewLessonReleaseDays] = useState(0);
+    const [newLessonReleaseDays, setNewLessonReleaseDays] = useState<number | undefined>(0);
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
     const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -1218,20 +1218,30 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/5 self-end md:self-auto">
-                                            <div className="text-right">
+                                        <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/5 w-full md:w-auto mt-4 md:mt-0">
+                                            <div className="flex-1 sm:text-right w-full sm:w-auto">
                                                 <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Liberar em</p>
-                                                <div className="flex items-center gap-2 justify-end">
+                                                <div className="flex items-center gap-2 justify-start sm:justify-end">
                                                     <input
                                                         type="number"
                                                         min="0"
-                                                        className="w-16 bg-black border border-white/10 rounded px-2 py-1 text-center font-bold text-gold-400 focus:border-gold-500 outline-none"
-                                                        value={module.releaseDays || 0}
+                                                        className="w-24 md:w-16 bg-black border border-white/10 rounded px-2 py-2 md:py-1 text-center font-bold text-gold-400 focus:border-gold-500 outline-none"
+                                                        value={module.releaseDays === undefined ? "" : module.releaseDays}
                                                         onChange={(e) => {
-                                                            const newVal = parseInt(e.target.value) || 0;
-                                                            const updatedModules = modules.map(m => m.id === module.id ? { ...m, releaseDays: newVal } : m);
-                                                            setModules(updatedModules);
+                                                            const val = e.target.value;
+                                                            if (val === "") {
+                                                                const updatedModules = modules.map(m => m.id === module.id ? { ...m, releaseDays: undefined } : m);
+                                                                setModules(updatedModules);
+                                                            } else {
+                                                                const num = parseInt(val);
+                                                                if (!isNaN(num)) {
+                                                                    const updatedModules = modules.map(m => m.id === module.id ? { ...m, releaseDays: num } : m);
+                                                                    setModules(updatedModules);
+                                                                }
+                                                            }
                                                         }}
+                                                        inputMode="numeric"
+                                                        pattern="[0-9]*"
                                                     />
                                                     <span className="text-sm font-medium text-white/60">dias</span>
                                                 </div>
@@ -1248,10 +1258,11 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                         alert('Erro ao salvar configuração.');
                                                     }
                                                 }}
-                                                className="bg-gold-500/10 hover:bg-gold-500 text-gold-500 hover:text-black p-3 rounded-xl transition-all border border-gold-500/20 shadow-lg"
+                                                className="w-full sm:w-auto bg-gold-500/10 hover:bg-gold-500 text-gold-500 hover:text-black p-4 md:p-3 rounded-xl transition-all border border-gold-500/20 shadow-lg flex items-center justify-center gap-2 group"
                                                 title="Salvar alterações deste módulo"
                                             >
                                                 <Save size={20} />
+                                                <span className="sm:hidden font-bold text-sm">Salvar Configuração</span>
                                             </button>
                                         </div>
                                     </div>
@@ -1446,8 +1457,20 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                     type="number"
                                                     min="0"
                                                     className="w-20 bg-black border border-white/10 rounded px-3 py-2 text-sm focus:border-gold-400 outline-none"
-                                                    value={newLessonReleaseDays}
-                                                    onChange={(e) => setNewLessonReleaseDays(parseInt(e.target.value) || 0)}
+                                                    value={newLessonReleaseDays === undefined ? "" : newLessonReleaseDays}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === "") {
+                                                            setNewLessonReleaseDays(undefined as any);
+                                                        } else {
+                                                            const num = parseInt(val);
+                                                            if (!isNaN(num)) {
+                                                                setNewLessonReleaseDays(num);
+                                                            }
+                                                        }
+                                                    }}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
                                                 />
                                                 <p className="text-xs text-white/60">Dias após a compra para liberar esta aula.</p>
                                             </div>
