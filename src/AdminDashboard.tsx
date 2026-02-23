@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction, useEffect } from 'react';
-import { ArrowLeft, Plus, Image as ImageIcon, Users, Link as LinkIcon, Trash2, Edit2, FileVideo, ShieldCheck, LayoutDashboard, BookOpen, PlayCircle, Send, Upload, X, Save, FilePlus } from 'lucide-react';
+import { ArrowLeft, Plus, Image as ImageIcon, Users, Link as LinkIcon, Trash2, Edit2, FileVideo, ShieldCheck, LayoutDashboard, BookOpen, PlayCircle, Send, Upload, X, Save, FilePlus, Clock } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -20,7 +20,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModules, onBack }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'banner' | 'modules' | 'students' | 'approvals' | 'access'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'banner' | 'modules' | 'students' | 'approvals' | 'access' | 'drip'>('overview');
     const [editingModule, setEditingModule] = useState<string | null>(null);
 
     // Real Data State
@@ -71,6 +71,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
     const [newLessonVideoId, setNewLessonVideoId] = useState("");
     const [newLessonThumbnail, setNewLessonThumbnail] = useState("");
     const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
+    const [newLessonReleaseDays, setNewLessonReleaseDays] = useState(0);
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
     const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -252,6 +253,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonVideoId(lesson.videoId || "");
         setNewLessonThumbnail(lesson.thumbnail || "");
         setNewLessonAttachments(lesson.attachments || []);
+        setNewLessonReleaseDays(lesson.releaseDays || 0);
         setSelectedVideoFile(null);
 
         // Detect source type automatically
@@ -266,6 +268,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonVideoId("");
         setNewLessonThumbnail("");
         setNewLessonAttachments([]);
+        setNewLessonReleaseDays(0);
         setSelectedVideoFile(null);
         setIsUploading(false);
         setUploadProgress(0);
@@ -301,7 +304,8 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                 description,
                 videoId: finalVideoUrl,
                 thumbnail: newLessonThumbnail,
-                attachments: newLessonAttachments
+                attachments: newLessonAttachments,
+                releaseDays: newLessonReleaseDays
             };
 
             let updatedLessons;
@@ -437,6 +441,12 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                         className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm whitespace-nowrap ${activeTab === 'overview' ? 'bg-gold-500 text-black font-bold shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                     >
                         <LayoutDashboard size={16} /> Dashboard
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('drip')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm whitespace-nowrap ${activeTab === 'drip' ? 'bg-gold-500 text-black font-bold shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Clock size={16} /> Liberação
                     </button>
                     <button
                         onClick={() => setActiveTab('access')}
@@ -1178,6 +1188,112 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                     </div>
                 )}
 
+                {/* DRIP TAB */}
+                {activeTab === 'drip' && (
+                    <div className="max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h1 className="text-3xl font-bold mb-2">Liberação Programada</h1>
+                                <p className="text-white/40">Gerencie o tempo de espera para liberação de módulos e aulas após a compra.</p>
+                            </div>
+                            <div className="bg-gold-500/10 border border-gold-500/20 px-4 py-2 rounded-lg flex items-center gap-2 text-gold-500 text-sm font-bold">
+                                <Clock size={16} /> Baseado na Data de Compra
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {modules.map((module) => (
+                                <div key={module.id} className="bg-black border border-white/10 rounded-2xl p-6 hover:border-gold-500/20 transition-all group">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                        <div className="flex items-center gap-5 flex-1">
+                                            <div className="relative">
+                                                <img src={module.image} alt={module.title} className="w-20 h-20 rounded-2xl object-cover border border-white/10 shadow-xl" />
+                                                <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Clock size={24} className="text-gold-500" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-bold text-white mb-1">{module.title}</h3>
+                                                <p className="text-white/40 text-xs uppercase tracking-widest font-bold">{module.lessons.length} aulas cadastradas</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/5 self-end md:self-auto">
+                                            <div className="text-right">
+                                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Liberar em</p>
+                                                <div className="flex items-center gap-2 justify-end">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        className="w-16 bg-black border border-white/10 rounded px-2 py-1 text-center font-bold text-gold-400 focus:border-gold-500 outline-none"
+                                                        value={module.releaseDays || 0}
+                                                        onChange={(e) => {
+                                                            const newVal = parseInt(e.target.value) || 0;
+                                                            const updatedModules = modules.map(m => m.id === module.id ? { ...m, releaseDays: newVal } : m);
+                                                            setModules(updatedModules);
+                                                        }}
+                                                    />
+                                                    <span className="text-sm font-medium text-white/60">dias</span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const m = modules.find(m => m.id === module.id);
+                                                        if (m) {
+                                                            await db.syncModule(m);
+                                                            alert('✅ Configuração de liberação salva!');
+                                                        }
+                                                    } catch (error) {
+                                                        alert('Erro ao salvar configuração.');
+                                                    }
+                                                }}
+                                                className="bg-gold-500/10 hover:bg-gold-500 text-gold-500 hover:text-black p-3 rounded-xl transition-all border border-gold-500/20 shadow-lg"
+                                                title="Salvar alterações deste módulo"
+                                            >
+                                                <Save size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Lessons List in Drip View */}
+                                    {module.lessons.length > 0 && (
+                                        <div className="mt-6 pt-6 border-t border-white/5">
+                                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-3">Configuração por Aulas:</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                {module.lessons.map(lesson => (
+                                                    <div key={lesson.id} className="flex items-center justify-between bg-white/5 px-4 py-2.5 rounded-lg border border-transparent hover:border-white/10 transition-all">
+                                                        <div className="flex items-center gap-3 overflow-hidden">
+                                                            <div className="w-2 h-2 rounded-full bg-gold-500/30 shrink-0" />
+                                                            <span className="text-sm text-white/70 truncate">{lesson.title}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                                                            <Clock size={12} className="text-white/20" />
+                                                            <span className={`text-xs font-bold ${lesson.releaseDays && lesson.releaseDays > 0 ? 'text-gold-500' : 'text-white/20'}`}>
+                                                                {lesson.releaseDays || 0}d
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <p className="mt-4 text-[10px] text-white/20 italic text-right flex items-center justify-end gap-1">
+                                                <Edit2 size={10} /> Para alterar o tempo de liberação da aula, use a edição do módulo.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {modules.length === 0 && (
+                                <div className="text-center py-24 bg-white/5 rounded-3xl border border-dashed border-white/10">
+                                    <BookOpen size={48} className="mx-auto mb-4 opacity-10" />
+                                    <p className="text-white/40 tracking-wide font-medium">Você ainda não criou nenhum módulo.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* ACCESS TAB */}
                 {activeTab === 'access' && (
                     <div className="max-w-4xl">
@@ -1292,7 +1408,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                                                    <LinkIcon size={12} /> Link do Vídeo
+                                                    <PlayCircle size={12} /> Link do Vídeo (YouTube, Vimeo, Panda, Bunny...)
                                                 </label>
                                                 {newLessonVideoId && (
                                                     <button
@@ -1305,13 +1421,37 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                             </div>
                                             <input
                                                 type="text"
-                                                placeholder="Cole o link do Bunny.net, YouTube ou Vimeo..."
+                                                placeholder="Cole o link aqui (qualquer formato)..."
                                                 className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
                                                 value={newLessonVideoId}
                                                 onChange={(e) => setNewLessonVideoId(e.target.value)}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
-                                            <p className="text-[10px] text-white/20">Suporta Bunny.net, YouTube, Vimeo e afins.</p>
+                                            <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                                <p className="text-[10px] text-white/40 leading-relaxed italic">
+                                                    <span className="text-gold-500 font-bold">Dica:</span> Agora você pode copiar o link direto da barra de endereço do seu navegador. O sistema converte automaticamente!
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Liberação Programada */}
+                                        <div className="space-y-2 bg-white/5 p-4 rounded-xl border border-white/5">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                                                    <Clock size={12} /> Liberação Programada
+                                                </label>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    className="w-20 bg-black border border-white/10 rounded px-3 py-2 text-sm focus:border-gold-400 outline-none"
+                                                    value={newLessonReleaseDays}
+                                                    onChange={(e) => setNewLessonReleaseDays(parseInt(e.target.value) || 0)}
+                                                />
+                                                <p className="text-xs text-white/60">Dias após a compra para liberar esta aula.</p>
+                                            </div>
+                                            <p className="text-[9px] text-white/30 italic">0 = Libera imediatamente após a compra.</p>
                                         </div>
 
                                         {/* Thumbnail Upload Area (Optional) */}

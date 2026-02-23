@@ -18,6 +18,7 @@ export interface Lesson {
     videoId?: string;
     thumbnail?: string;
     attachments?: Attachment[];
+    releaseDays?: number;
 }
 
 export interface Module {
@@ -27,6 +28,7 @@ export interface Module {
     image: string;
     lessonCount: number;
     lessons: Lesson[];
+    releaseDays?: number;
 }
 
 export interface BannerConfig {
@@ -50,16 +52,17 @@ interface ModuleCardProps {
     showTitle?: boolean;
     lessons?: Lesson[];
     onClick?: () => void;
+    isLocked?: boolean;
+    releaseDate?: string;
 }
 
-const ModuleCard = ({ image, title, showTitle, lessons, onClick }: ModuleCardProps) => {
+const ModuleCard = ({ image, title, showTitle, lessons, onClick, isLocked, releaseDate }: ModuleCardProps) => {
     const [isLoaded, setIsLoaded] = useState(false);
 
     return (
-        <div onClick={onClick} className="flex-none w-[180px] sm:w-[200px] lg:w-[220px] 2xl:w-[250px] aspect-[2/3] group relative bg-zinc-900 rounded-lg overflow-hidden border border-white/5 hover:border-gold-500/30 transition-all duration-700 hover:shadow-[0_20px_80px_-20px_rgba(212,175,55,0.15)] hover:-translate-y-2 cursor-pointer snap-start">
-            {/* Full Height Image with Cinematic Zoom and Fade-in */}
+        <div onClick={isLocked ? undefined : onClick} className={`flex-none w-[180px] sm:w-[200px] lg:w-[220px] 2xl:w-[250px] aspect-[2/3] group relative bg-zinc-900 rounded-lg overflow-hidden border transition-all duration-700 snap-start ${isLocked ? 'grayscale opacity-60 cursor-not-allowed border-white/5' : 'hover:border-gold-500/30 hover:shadow-[0_20px_80px_-20px_rgba(212,175,55,0.15)] hover:-translate-y-2 cursor-pointer border-white/5'}`}>
+            {/* Full Height Image */}
             <div className="absolute inset-0 overflow-hidden bg-zinc-800">
-                {/* Skeleton Loader Shine */}
                 {!isLoaded && (
                     <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shimmer" />
                 )}
@@ -73,13 +76,28 @@ const ModuleCard = ({ image, title, showTitle, lessons, onClick }: ModuleCardPro
                 />
             </div>
 
-            {/* Premium Glass Badge - Lesson Count */}
-            <div className="absolute top-4 right-4 z-20">
-                <div className="bg-black/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
-                    <BookOpen size={12} className="text-gold-400" />
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-white/90">{lessons?.length || 0} Aulas</span>
+            {/* Lock Overlay */}
+            {isLocked && (
+                <div className="absolute inset-0 z-30 bg-black/60 flex flex-col items-center justify-center p-4 text-center">
+                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3 border border-white/10 backdrop-blur-md">
+                        <ShieldCheck size={24} className="text-white/40" />
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-white/50 mb-1">Conteúdo Bloqueado</p>
+                    {releaseDate && (
+                        <p className="text-[11px] text-gold-500 font-bold leading-tight">Disponível em:<br />{releaseDate}</p>
+                    )}
                 </div>
-            </div>
+            )}
+
+            {/* Premium Glass Badge - Lesson Count */}
+            {!isLocked && (
+                <div className="absolute top-4 right-4 z-20">
+                    <div className="bg-black/80 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
+                        <BookOpen size={12} className="text-gold-400" />
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-white/90">{lessons?.length || 0} Aulas</span>
+                    </div>
+                </div>
+            )}
 
             {/* Title Overlay with Gradient - Only if showTitle is true */}
             {showTitle && title && (
@@ -312,6 +330,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
     });
     const [isAIOpen, setIsAIOpen] = useState(false);
     const [showWelcome, setShowWelcome] = useState(showWelcomeNotification);
+    const [purchaseAt, setPurchaseAt] = useState<string | null>(null);
 
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
 
@@ -337,6 +356,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                         }
 
                         setUserEmail(student.email || studentEmail.toLowerCase());
+                        if (student.purchase_at) setPurchaseAt(student.purchase_at);
                     } else {
                         // Fallback logic for when the database record is missing
                         setUserName(studentEmail.split('@')[0] || "Aluno");
@@ -404,8 +424,30 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
         }
     };
 
+    const isContentReleased = (purchaseAtDate: string | null, releaseDays: number = 0) => {
+        if (!purchaseAtDate) return true;
+        if (releaseDays <= 0) return true;
+        const purchase = new Date(purchaseAtDate).getTime();
+        const now = new Date().getTime();
+        const releaseTime = purchase + (releaseDays * 24 * 60 * 60 * 1000);
+        return now >= releaseTime;
+    };
+
+    const getReleaseDateString = (purchaseAtDate: string | null, releaseDays: number = 0) => {
+        if (!purchaseAtDate || releaseDays <= 0) return null;
+        const purchase = new Date(purchaseAtDate).getTime();
+        const releaseTime = purchase + (releaseDays * 24 * 60 * 60 * 1000);
+        return new Date(releaseTime).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     if (activeModule) {
-        return <Classroom module={activeModule} onBack={() => setActiveModuleId(null)} />;
+        return <Classroom module={activeModule} onBack={() => setActiveModuleId(null)} studentPurchaseDate={purchaseAt} />;
     }
 
     return (
@@ -607,9 +649,20 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                         onScroll={checkScroll}
                         className="flex gap-6 overflow-x-auto pb-12 pt-4 px-4 sm:px-0 scrollbar-hide snap-x scroll-smooth"
                     >
-                        {modules.map((mod, i) => (
-                            <ModuleCard key={i} {...mod} onClick={() => setActiveModuleId(mod.id)} />
-                        ))}
+                        {modules.map((mod, i) => {
+                            const locked = !isContentReleased(purchaseAt, mod.releaseDays);
+                            const releaseDateStr = getReleaseDateString(purchaseAt, mod.releaseDays);
+
+                            return (
+                                <ModuleCard
+                                    key={i}
+                                    {...mod}
+                                    onClick={() => setActiveModuleId(mod.id)}
+                                    isLocked={locked}
+                                    releaseDate={releaseDateStr || undefined}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
             </div>

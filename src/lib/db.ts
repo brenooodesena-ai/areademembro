@@ -30,6 +30,7 @@ export interface Lesson {
     thumbnail?: string;
     attachments?: Attachment[];
     order_index?: number;
+    releaseDays?: number; // Dias para liberar após a compra
 }
 
 export interface Module {
@@ -40,6 +41,7 @@ export interface Module {
     lessonCount: number;
     lessons: Lesson[];
     order_index?: number;
+    releaseDays?: number; // Dias para liberar o módulo todo
 }
 
 export interface Student {
@@ -50,6 +52,7 @@ export interface Student {
     status: 'pending' | 'approved' | 'rejected';
     progress: number;
     lastAccess: string;
+    purchase_at: string; // Data exata da compra/liberação inicial
     image?: string | null;
     accessLogs?: string[];
     created_at?: string;
@@ -95,7 +98,8 @@ export const db = {
                 image: m.image,
                 lessonCount: m.lessonCount || 0,
                 lessons: lessonMap.get(m.id) || [],
-                order_index: m.order_index
+                order_index: m.order_index,
+                releaseDays: m.releaseDays || 0
             }));
         } catch (error: any) {
             console.error('Firestore Error (Modules):', error);
@@ -144,7 +148,8 @@ export const db = {
             title: module.title,
             showTitle: module.showTitle,
             image: module.image,
-            lessonCount: module.lessons.length
+            lessonCount: module.lessons.length,
+            releaseDays: module.releaseDays || 0
         });
 
         // 2. Sync Lessons
@@ -170,6 +175,9 @@ export const db = {
                 title: l.title,
                 description: l.description,
                 videoId: l.videoId || "",
+                thumbnail: l.thumbnail || "",
+                attachments: l.attachments || [],
+                releaseDays: l.releaseDays || 0,
                 order_index: i
             };
 
@@ -199,7 +207,10 @@ export const db = {
             module_id: moduleId,
             title: lesson.title,
             description: lesson.description || "",
-            videoId: lesson.videoId || ""
+            videoId: lesson.videoId || "",
+            thumbnail: lesson.thumbnail || "",
+            attachments: lesson.attachments || [],
+            releaseDays: lesson.releaseDays || 0
         };
 
         if (isNew) {
@@ -221,7 +232,7 @@ export const db = {
         const studentsQuery = query(collection(firestore, COLLECTIONS.STUDENTS), where('email', '==', email.toLowerCase()));
         const snap = await getDocs(studentsQuery);
 
-        const payload = {
+        const payload: any = {
             name,
             email: email.toLowerCase(),
             lastAccess: new Date().toISOString()
@@ -229,12 +240,12 @@ export const db = {
 
         let studentId: string;
         if (snap.empty) {
-            const docRef = await addDoc(collection(firestore, COLLECTIONS.STUDENTS), {
-                ...payload,
-                status: 'pending',
-                progress: 0,
-                created_at: new Date().toISOString()
-            });
+            payload.status = 'pending';
+            payload.progress = 0;
+            payload.created_at = new Date().toISOString();
+            payload.purchase_at = new Date().toISOString(); // Default para agora
+
+            const docRef = await addDoc(collection(firestore, COLLECTIONS.STUDENTS), payload);
             studentId = docRef.id;
         } else {
             studentId = snap.docs[0].id;

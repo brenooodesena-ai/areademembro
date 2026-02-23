@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { ArrowLeft, Play, ChevronRight, List, Info, CheckCircle, Download } from 'lucide-react';
+import { ArrowLeft, Play, ChevronRight, List, Info, CheckCircle, Download, Lock } from 'lucide-react';
 import type { Module, Lesson } from '../Dashboard';
 
 interface ClassroomProps {
     module: Module;
     onBack: () => void;
+    studentPurchaseDate: string | null;
 }
 
-export function Classroom({ module, onBack }: ClassroomProps) {
+export function Classroom({ module, onBack, studentPurchaseDate }: ClassroomProps) {
     const [activeLesson, setActiveLesson] = useState<Lesson>(module.lessons[0] || {
         id: '1',
         title: 'Aula Introdutória',
@@ -17,33 +18,210 @@ export function Classroom({ module, onBack }: ClassroomProps) {
 
     const [mobileTab, setMobileTab] = useState<'info' | 'lessons'>('info');
 
+    const isContentReleased = (releaseDays: number = 0) => {
+        if (!studentPurchaseDate) return true;
+        if (releaseDays <= 0) return true;
+        const purchase = new Date(studentPurchaseDate).getTime();
+        const now = new Date().getTime();
+        const releaseTime = purchase + (releaseDays * 24 * 60 * 60 * 1000);
+        return now >= releaseTime;
+    };
+
+    const getReleaseDateString = (releaseDays: number = 0) => {
+        if (!studentPurchaseDate || releaseDays <= 0) return "";
+        const purchase = new Date(studentPurchaseDate).getTime();
+        const releaseTime = purchase + (releaseDays * 24 * 60 * 60 * 1000);
+        return new Date(releaseTime).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    // Helper to render the video player or lock screen
+    const renderVideoPlayer = () => {
+        const isLocked = !isContentReleased(activeLesson.releaseDays);
+        const releaseDate = getReleaseDateString(activeLesson.releaseDays);
+
+        if (isLocked) {
+            return (
+                <div className="w-full aspect-video rounded-xl border border-white/10 bg-white/5 flex flex-col items-center justify-center text-center p-8 backdrop-blur-sm relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gold-500 via-transparent to-transparent" />
+                    <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10 shadow-2xl relative z-10">
+                        <Lock size={40} className="text-white/20" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2 relative z-10">Aula Bloqueada</h3>
+                    <p className="text-white/40 mb-6 max-w-sm relative z-10">Esta aula faz parte da liberação programada do seu curso.</p>
+                    <div className="bg-gold-500 text-black px-6 py-3 rounded-full font-bold shadow-[0_0_30px_rgba(212,175,55,0.3)] relative z-10">
+                        Disponível em: {releaseDate}
+                    </div>
+                </div>
+            );
+        }
+
+        if (activeLesson.videoId) {
+            const url = activeLesson.videoId.trim();
+
+            // 1. YouTube Detection & Conversion
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                let videoId = '';
+                if (url.includes('v=')) {
+                    videoId = url.split('v=')[1].split('&')[0];
+                } else if (url.includes('youtu.be/')) {
+                    videoId = url.split('youtu.be/')[1].split('?')[0];
+                } else if (url.includes('youtube.com/embed/')) {
+                    videoId = url.split('youtube.com/embed/')[1].split('?')[0];
+                } else if (url.includes('youtube.com/shorts/')) {
+                    videoId = url.split('youtube.com/shorts/')[1].split('?')[0];
+                }
+
+                if (videoId) {
+                    return (
+                        <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
+                            <iframe
+                                src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                                className="w-full h-full"
+                                allowFullScreen
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            />
+                        </div>
+                    );
+                }
+            }
+
+            // 2. Vimeo Detection & Conversion
+            if (url.includes('vimeo.com')) {
+                let videoId = '';
+                if (url.includes('player.vimeo.com/video/')) {
+                    videoId = url.split('player.vimeo.com/video/')[1].split('?')[0];
+                } else {
+                    videoId = url.split('/').pop()?.split('?')[0] || '';
+                }
+
+                if (videoId) {
+                    return (
+                        <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
+                            <iframe
+                                src={`https://player.vimeo.com/video/${videoId}`}
+                                className="w-full h-full"
+                                allowFullScreen
+                                allow="autoplay; fullscreen; picture-in-picture"
+                            />
+                        </div>
+                    );
+                }
+            }
+
+            // 3. PandaVideo (Multiple domains)
+            if (url.includes('pandavideo.com') || url.includes('panda.video') || url.includes('pnd.to') || url.includes('player.pandavideo.com')) {
+                let embedUrl = url;
+                if (!url.includes('/embed/')) {
+                    const id = url.split('/').pop()?.split('?')[0];
+                    embedUrl = `https://player.pandavideo.com.br/embed/${id}`;
+                }
+                return (
+                    <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
+                        <iframe src={embedUrl} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
+                    </div>
+                );
+            }
+
+            // 4. Bunny.net Stream
+            if (url.includes('iframe.mediadelivery.net') || url.includes('videodelivery.net') || url.includes('bunny.net')) {
+                const separator = url.includes('?') ? '&' : '?';
+                const bunnyUrl = `${url}${separator}primaryColor=000000&secondaryColor=000000&backgroundColor=000000`;
+                return (
+                    <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
+                        <iframe src={bunnyUrl} className="w-full h-full" allowFullScreen allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture" />
+                    </div>
+                );
+            }
+
+            // 5. Generic Embed/Iframe Check (Resilience for Wistia, etc.)
+            const isEmbed = url.includes('/embed/') || url.includes('player') || url.includes('/v/') || url.includes('iframe');
+            if (isEmbed && !url.match(/\.(mp4|webm|ogg|mov)$/i)) {
+                return (
+                    <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
+                        <iframe src={url} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" />
+                    </div>
+                );
+            }
+
+            // 6. Native Video Selection (Direct files)
+            return (
+                <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
+                    <video
+                        key={url}
+                        src={url}
+                        controls
+                        className="w-full h-full object-cover"
+                        poster={activeLesson.thumbnail || ""}
+                        controlsList="nodownload"
+                    >
+                        Seu navegador não suporta a tag de vídeo.
+                    </video>
+                </div>
+            );
+        }
+
+        return (
+            <div className="w-full aspect-video relative flex items-center justify-center bg-neutral-900 rounded-xl overflow-hidden shadow-2xl border border-white/5">
+                <div className="absolute inset-0">
+                    <img
+                        src={activeLesson.thumbnail || "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=2070&auto=format&fit=crop"}
+                        className="w-full h-full object-cover opacity-20"
+                        alt="Video Thumbnail"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
+                </div>
+
+                <button className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:scale-110 hover:bg-white/20 transition-all cursor-pointer shadow-2xl relative z-10 group">
+                    <Play size={32} className="fill-white text-white ml-2 opacity-90 group-hover:opacity-100 transition-opacity" />
+                </button>
+
+                <div className="absolute bottom-6 left-6 z-20">
+                    <p className="text-white/40 text-[10px] font-mono tracking-widest uppercase bg-black/40 backdrop-blur-sm px-2 py-1 rounded">Placeholder de Vídeo</p>
+                </div>
+            </div>
+        );
+    };
+
     // Helper to render the list of lessons
     const renderLessonList = () => (
         <div className="space-y-2 text-left">
             {module.lessons.map((lesson, index) => {
                 const isActive = lesson.id === activeLesson.id;
+                const isLocked = !isContentReleased(lesson.releaseDays);
+                const releaseDate = getReleaseDateString(lesson.releaseDays);
+
                 return (
                     <div
                         key={lesson.id}
-                        onClick={() => setActiveLesson(lesson)}
-                        className={`p-4 rounded-xl cursor-pointer transition-all border ${isActive
+                        onClick={() => !isLocked && setActiveLesson(lesson)}
+                        className={`p-4 rounded-xl transition-all border relative overflow-hidden ${isActive
                             ? 'bg-white/10 border-gold-500/30 shadow-[0_0_20px_-5px_rgba(212,175,55,0.2)]'
-                            : 'bg-transparent border-white/5 hover:bg-white/5 hover:border-white/10'
-                            } group relative overflow-hidden`}
+                            : isLocked
+                                ? 'bg-transparent border-white/5 opacity-50 cursor-not-allowed'
+                                : 'bg-transparent border-white/5 hover:bg-white/5 hover:border-white/10 cursor-pointer'
+                            } group`}
                     >
                         <div className="flex gap-4 relative z-10">
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border shrink-0 transition-all ${isActive
                                 ? 'bg-gold-500 text-black border-gold-500'
-                                : 'bg-white/5 text-white/40 border-white/10 group-hover:border-gold-500/20'
+                                : isLocked
+                                    ? 'bg-white/5 text-white/20 border-white/5'
+                                    : 'bg-white/5 text-white/40 border-white/10 group-hover:border-gold-500/20'
                                 }`}>
-                                {isActive ? <CheckCircle size={18} /> : index + 1}
+                                {isActive ? <CheckCircle size={18} /> : isLocked ? <Lock size={14} /> : index + 1}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className={`text-sm font-semibold leading-snug ${isActive ? 'text-white' : 'text-white/80 group-hover:text-white'}`}>
+                                <h3 className={`text-sm font-semibold leading-snug ${isActive ? 'text-white' : isLocked ? 'text-white/40' : 'text-white/80 group-hover:text-white'}`}>
                                     {lesson.title}
                                 </h3>
                                 <p className="text-[11px] text-white/40 truncate mt-1">
-                                    {isActive ? 'Em reprodução' : lesson.description || 'Clique para assistir'}
+                                    {isActive ? 'Em reprodução' : isLocked ? `Disponível em ${releaseDate}` : lesson.description || 'Clique para assistir'}
                                 </p>
                             </div>
                             {isActive && (
@@ -82,69 +260,7 @@ export function Classroom({ module, onBack }: ClassroomProps) {
                     {/* Video Player Section - Keeping the smaller size as refined previously */}
                     <section className="w-full relative flex justify-start p-4 md:p-8 bg-black">
                         <div className="w-full max-w-full">
-                            {activeLesson.videoId ? (
-                                <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/5 bg-black">
-                                    {(() => {
-                                        const url = activeLesson.videoId;
-
-                                        // YouTube
-                                        if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                                            const id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop();
-                                            return <iframe src={`https://www.youtube.com/embed/${id}`} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />;
-                                        }
-
-                                        // Vimeo
-                                        if (url.includes('vimeo.com')) {
-                                            const id = url.split('/').pop();
-                                            return <iframe src={`https://player.vimeo.com/video/${id}`} className="w-full h-full" allowFullScreen allow="autoplay; fullscreen; picture-in-picture" />;
-                                        }
-
-                                        // PandaVideo
-                                        if (url.includes('pandavideo.com.br')) {
-                                            const id = url.split('/').pop();
-                                            return <iframe src={`https://player.pandavideo.com.br/embed/${id}`} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />;
-                                        }
-
-                                        // Bunny.net Stream (iframe.mediadelivery.net ou videodelivery.net)
-                                        if (url.includes('iframe.mediadelivery.net') || url.includes('videodelivery.net')) {
-                                            return <iframe src={url} className="w-full h-full" allowFullScreen allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture" />;
-                                        }
-
-                                        // Default: Native Video Tag (fallback)
-                                        return (
-                                            <video
-                                                key={url}
-                                                src={url}
-                                                controls
-                                                className="w-full h-full object-cover"
-                                                poster={activeLesson.thumbnail || ""}
-                                                controlsList="nodownload"
-                                            >
-                                                Seu navegador não suporta a tag de vídeo.
-                                            </video>
-                                        );
-                                    })()}
-                                </div>
-                            ) : (
-                                <div className="w-full aspect-video relative flex items-center justify-center bg-neutral-900 rounded-xl overflow-hidden shadow-2xl border border-white/5">
-                                    <div className="absolute inset-0">
-                                        <img
-                                            src={activeLesson.thumbnail || "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=2070&auto=format&fit=crop"}
-                                            className="w-full h-full object-cover opacity-20"
-                                            alt="Video Thumbnail"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
-                                    </div>
-
-                                    <button className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:scale-110 hover:bg-white/20 transition-all cursor-pointer shadow-2xl relative z-10 group">
-                                        <Play size={32} className="fill-white text-white ml-2 opacity-90 group-hover:opacity-100 transition-opacity" />
-                                    </button>
-
-                                    <div className="absolute bottom-6 left-6 z-20">
-                                        <p className="text-white/40 text-[10px] font-mono tracking-widest uppercase bg-black/40 backdrop-blur-sm px-2 py-1 rounded">Video Player Simulator</p>
-                                    </div>
-                                </div>
-                            )}
+                            {renderVideoPlayer()}
                         </div>
                     </section>
 
