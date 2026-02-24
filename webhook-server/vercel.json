@@ -1,0 +1,9 @@
+{
+    "redirects": [
+        {
+            "source": "/(.*)",
+            "destination": "https://caminhodigitalmaster.com/$1",
+            "permanent": true
+        }
+    ]
+}
