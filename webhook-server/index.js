@@ -58,17 +58,36 @@ async function sendWelcomeEmail(email, name, password) {
             to: email,
             subject: '🚀 Seu acesso à Área de Membros!',
             html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-          <h1 style="color: #d4af37;">Bem-vindo ao Treinamento!</h1>
-          <p>Olá <strong>${name}</strong>, sua compra foi aprovada e seu acesso está liberado!</p>
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 5px solid #d4af37; margin: 20px 0;">
-            <p style="margin: 0;"><strong>Link de Acesso:</strong> <a href="https://areademembros-2b07a.web.app/" style="color: #d4af37;">Acessar Área de Membros</a></p>
-            <p style="margin: 10px 0 0 0;"><strong>Seu E-mail:</strong> ${email}</p>
-            <p style="margin: 5px 0 0 0;"><strong>Senha Temporária:</strong> ${password}</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #ffffff; text-align: center;">
+          
+          <h1 style="color: #212121; margin-bottom: 40px; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">
+            BEM VINDO (A)
+          </h1>
+          
+          <h2 style="color: #4a4a4a; font-size: 20px; font-weight: normal; margin-bottom: 25px;">
+            informações de login
+          </h2>
+          
+          <div style="text-align: left; background-color: #f9f9f9; padding: 25px 30px; border-radius: 8px; margin: 0 auto 30px auto; display: inline-block; min-width: 80%;">
+            <p style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
+              <strong>Email:</strong> ${email}
+            </p>
+            <p style="margin: 0; color: #333; font-size: 16px;">
+              <strong>Senha:</strong> ${password}
+            </p>
           </div>
-          <p><em>* Recomendamos trocar sua senha no primeiro login.</em></p>
-          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #999;">Garantimos que seus dados estão seguros conosco.</p>
+
+          <p style="color: #777; font-size: 14px; line-height: 1.6; margin: 0 auto 40px auto; max-width: 90%;">
+            <strong>ATENÇÃO:</strong> é recomendado que mude a sua senha depois que fizer o seu primeiro login.
+          </p>
+          
+          <div style="margin: 40px 0;">
+            <a href="https://areademembros-2b07a.web.app/" 
+               style="background-color: #d4af37; color: #ffffff; padding: 18px 40px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">
+              Acesse a área de membros aqui
+            </a>
+          </div>
+          
         </div>
       `
         });
@@ -109,7 +128,7 @@ app.post('/webhook', async (req, res) => {
         // CASO 1: Venda Aprovada (Paid ou Approved)
         if (status === 'paid' || status === 'approved') {
             if (snapshot.empty) {
-                const tempPassword = "mudar123";
+                const tempPassword = "aluno123";
                 await studentsRef.add({
                     name: name,
                     email: email,
