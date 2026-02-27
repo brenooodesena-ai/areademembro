@@ -116,6 +116,14 @@ app.get('/webhook', (req, res) => {
     res.send('Opa! Esta rota existe, mas ela só aceita envios do tipo POST (que é o que a Kiwify manda). Mas o sinal está chegando aqui!');
 });
 
+const crypto = require('crypto');
+
+// Função de Hash idêntica ao Frontend
+function hashPassword(password) {
+    const salt = 'area-membros-salt';
+    return crypto.createHash('sha256').update(password + salt).digest('hex');
+}
+
 // Rota para o Webhook
 app.post('/webhook', async (req, res) => {
     console.log('--- NOVO WEBHOOK RECEBIDO ---');
@@ -141,10 +149,13 @@ app.post('/webhook', async (req, res) => {
         const studentsRef = db.collection('students');
         const snapshot = await studentsRef.where('email', '==', email).get();
 
+        const tempPassword = "aluno123";
+        const hashedPassword = hashPassword(tempPassword);
+
         // CASO 1: Venda Aprovada (Paid ou Approved)
         if (status === 'paid' || status === 'approved') {
             if (snapshot.empty) {
-                const tempPassword = "aluno123";
+                // Criar novo aluno
                 await studentsRef.add({
                     name: fullName,
                     email: email,
@@ -152,19 +163,24 @@ app.post('/webhook', async (req, res) => {
                     progress: 0,
                     created_at: admin.firestore.FieldValue.serverTimestamp(),
                     lastAccess: admin.firestore.FieldValue.serverTimestamp(),
-                    password_hash: tempPassword
+                    password_hash: hashedPassword // Senha Hasheada
                 });
                 console.log(`✅ Novo aluno criado e aprovado: ${email}`);
 
                 // Enviar email de boas-vindas
                 await sendWelcomeEmail(email, firstName, tempPassword);
             } else {
-                // Apenas garantir que o status seja approved
-                await snapshot.docs[0].ref.update({
+                // Aluno já existe (pode estar Rejected por reembolso)
+                const docRef = snapshot.docs[0].ref;
+                await docRef.update({
                     status: 'approved',
+                    password_hash: hashedPassword, // Resetar para a senha padrão hasheada
                     last_update: admin.firestore.FieldValue.serverTimestamp()
                 });
-                console.log(`✅ Aluno existente atualizado para aprovado: ${email}`);
+                console.log(`✅ Aluno existente reativado: ${email}`);
+
+                // Enviar email novamente para o aluno saber que recuperou o acesso
+                await sendWelcomeEmail(email, firstName, tempPassword);
             }
         }
 
