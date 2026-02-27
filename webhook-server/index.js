@@ -7,6 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Log global de todas as requisições que chegam
+app.use((req, res, next) => {
+    console.log(`[${new Date().toLocaleTimeString()}] Recebido: ${req.method} ${req.url}`);
+    next();
+});
+
 // Configuração do Firebase Admin usando Variável de Ambiente
 // O Render permite colar o JSON inteiro na variável FIREBASE_SERVICE_ACCOUNT
 let db;
