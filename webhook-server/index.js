@@ -9,7 +9,8 @@ app.use(express.json());
 
 // Log global de todas as requisições que chegam
 app.use((req, res, next) => {
-    console.log(`[${new Date().toLocaleTimeString()}] Recebido: ${req.method} ${req.url}`);
+    console.log(`[${new Date().toLocaleTimeString()}] 🚀 CHAMADA RECEBIDA: ${req.method} ${req.url}`);
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
     next();
 });
 
