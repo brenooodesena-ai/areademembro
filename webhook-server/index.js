@@ -53,7 +53,7 @@ if (process.env.RESEND_API_KEY) {
 }
 
 // Função para enviar email de boas-vindas
-async function sendWelcomeEmail(email, name, password) {
+async function sendWelcomeEmail(email, firstName, password) {
     if (!resend) {
         console.error('❌ Abortando envio de e-mail: Resend não inicializado.');
         return false;
@@ -64,36 +64,33 @@ async function sendWelcomeEmail(email, name, password) {
             to: email,
             subject: '🚀 Seu acesso à Área de Membros!',
             html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #ffffff; text-align: center;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6;">
+          <p style="font-size: 16px;">Olá, <strong>${firstName}</strong></p>
           
-          <h1 style="color: #212121; margin-bottom: 40px; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">
-            BEM VINDO (A)
-          </h1>
+          <p style="font-size: 16px;">Sua inscrição foi confirmada com sucesso!</p>
           
-          <h2 style="color: #4a4a4a; font-size: 20px; font-weight: normal; margin-bottom: 25px;">
-            informações de login
-          </h2>
+          <p style="font-size: 16px; margin-top: 20px;">Aqui estão os seus dados de acesso:</p>
           
-          <div style="text-align: left; background-color: #f9f9f9; padding: 25px 30px; border-radius: 8px; margin: 0 auto 30px auto; display: inline-block; min-width: 80%;">
-            <p style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
-              <strong>Email:</strong> ${email}
-            </p>
-            <p style="margin: 0; color: #333; font-size: 16px;">
-              <strong>Senha:</strong> ${password}
-            </p>
+          <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+            <p style="margin: 5px 0;"><strong>Senha:</strong> ${password}</p>
           </div>
-
-          <p style="color: #777; font-size: 14px; line-height: 1.6; margin: 0 auto 40px auto; max-width: 90%;">
-            <strong>ATENÇÃO:</strong> é recomendado que mude a sua senha depois que fizer o seu primeiro login.
-          </p>
           
-          <div style="margin: 40px 0;">
-            <a href="https://areademembros-2b07a.web.app/" 
-               style="background-color: #d4af37; color: #ffffff; padding: 18px 40px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">
-              Acesse a área de membros aqui
+          <div style="text-align: center; margin: 35px 0;">
+            <a href="https://www.caminhodigitalmaster.com" 
+               style="background-color: #d4af37; color: #ffffff; padding: 15px 50px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 18px; display: inline-block;">
+              CLIQUE AQUI
             </a>
           </div>
           
+          <p style="font-size: 14px; color: #666; margin-top: 30px;">
+            <strong>ATENÇÃO:</strong> Por segurança, recomendamos que você altere sua senha imediatamente após o primeiro acesso à plataforma.
+          </p>
+          
+          <p style="font-size: 16px; margin-top: 40px;">
+            Nos vemos na área de membros!!<br><br>
+            <strong>Breno Sena</strong>
+          </p>
         </div>
       `
         });
@@ -134,7 +131,8 @@ app.post('/webhook', async (req, res) => {
     }
 
     const email = clienteDados.email.toLowerCase().trim();
-    const name = clienteDados.full_name || clienteDados.name || 'Aluno';
+    const fullName = clienteDados.full_name || clienteDados.name || 'Aluno';
+    const firstName = clienteDados.first_name || fullName.split(' ')[0];
     const status = order_status;
 
     console.log(`📩 Recebido webhook para ${email}. Status: ${status}`);
@@ -148,7 +146,7 @@ app.post('/webhook', async (req, res) => {
             if (snapshot.empty) {
                 const tempPassword = "aluno123";
                 await studentsRef.add({
-                    name: name,
+                    name: fullName,
                     email: email,
                     status: 'approved',
                     progress: 0,
@@ -159,7 +157,7 @@ app.post('/webhook', async (req, res) => {
                 console.log(`✅ Novo aluno criado e aprovado: ${email}`);
 
                 // Enviar email de boas-vindas
-                await sendWelcomeEmail(email, name, tempPassword);
+                await sendWelcomeEmail(email, firstName, tempPassword);
             } else {
                 // Apenas garantir que o status seja approved
                 await snapshot.docs[0].ref.update({
