@@ -104,6 +104,15 @@ async function sendWelcomeEmail(email, name, password) {
     }
 }
 
+// Rota de teste simples para ver no navegador
+app.get('/', (req, res) => {
+    res.send('✅ Servidor de Webhook da Área de Membros está ONLINE e aguardando vendas!');
+});
+
+app.get('/webhook', (req, res) => {
+    res.send('Opa! Esta rota existe, mas ela só aceita envios do tipo POST (que é o que a Kiwify manda). Mas o sinal está chegando aqui!');
+});
+
 // Rota para o Webhook
 app.post('/webhook', async (req, res) => {
     console.log('--- NOVO WEBHOOK RECEBIDO ---');
