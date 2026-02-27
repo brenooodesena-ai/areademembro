@@ -54,7 +54,7 @@ async function sendWelcomeEmail(email, name, password) {
     }
     try {
         const { data, error } = await resend.emails.send({
-            from: 'Area de Membros <onboarding@resend.dev>', // No futuro mude para seu domínio
+            from: 'Caminho Digital <suporte@caminhodigitalmaster.com>',
             to: email,
             subject: '🚀 Seu acesso à Área de Membros!',
             html: `
