@@ -109,14 +109,17 @@ app.post('/webhook', async (req, res) => {
     console.log('--- NOVO WEBHOOK RECEBIDO ---');
     console.log('Payload:', JSON.stringify(req.body, null, 2));
 
-    const { order_status, customer } = req.body;
+    const { order_status, customer, Customer } = req.body;
 
-    if (!customer || !customer.email) {
+    // A Kiwify envia os dados do cliente dentro do objeto "Customer" (com 'C' maiúsculo)
+    const clienteDados = Customer || customer;
+
+    if (!clienteDados || !clienteDados.email) {
         return res.status(400).send('Payload inválido: Email faltando.');
     }
 
-    const email = customer.email.toLowerCase().trim();
-    const name = customer.name || 'Aluno';
+    const email = clienteDados.email.toLowerCase().trim();
+    const name = clienteDados.full_name || clienteDados.name || 'Aluno';
     const status = order_status;
 
     console.log(`📩 Recebido webhook para ${email}. Status: ${status}`);
