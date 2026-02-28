@@ -67,13 +67,10 @@ async function sendWelcomeEmail(email, firstName, password) {
             subject: '🚀 Seu acesso à Área de Membros!',
             html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff; color: #333;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <img src="https://webhook-membros-cdm.onrender.com/logo.png" alt="Caminho Digital Master" style="max-height: 100px; width: auto;">
-          </div>
-
+          
           <p style="font-size: 17px; margin-bottom: 10px;">Olá, <strong>${firstName}</strong>!</p>
           
-          <p style="font-size: 16px; margin-bottom: 25px;">Sua inscrição foi confirmada com sucesso! É um prazer ter você conosco.</p>
+          <p style="font-size: 16px; margin-bottom: 25px;">Sua inscrição foi confirmada com sucesso!</p>
           
           <div style="background-color: #f7f7f7; border: 1px solid #eeeeee; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
             <p style="margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Dados de acesso:</p>
@@ -83,7 +80,7 @@ async function sendWelcomeEmail(email, firstName, password) {
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="https://www.caminhodigitalmaster.com" 
-               style="background-color: #27ae60; display: inline-block; padding: 18px 60px; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);">
+               style="background-color: #064e1b; display: inline-block; padding: 18px 60px; color: #1a1a1a; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 22px; letter-spacing: -0.5px; box-shadow: 0 4px 15px rgba(6, 78, 27, 0.2); font-family: sans-serif;">
               Acesse aqui
             </a>
           </div>
@@ -95,8 +92,7 @@ async function sendWelcomeEmail(email, firstName, password) {
           <div style="border-top: 1px solid #eee; padding-top: 25px; margin-top: 30px;">
             <p style="font-size: 16px; margin: 0;">
               Nos vemos na área de membros!!<br><br>
-              <strong>Breno Sena</strong><br>
-              <span style="font-size: 13px; color: #999;">Suporte Caminho Digital Master</span>
+              <strong>Breno Sena</strong>
             </p>
           </div>
         </div>
