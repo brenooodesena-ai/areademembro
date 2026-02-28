@@ -66,34 +66,41 @@ async function sendWelcomeEmail(email, firstName, password) {
             to: email,
             subject: '🚀 Seu acesso à Área de Membros!',
             html: `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff; color: #333;">
+        <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; background-color: #ffffff; color: #333333; line-height: 1.6;">
           
-          <p style="font-size: 17px; margin-bottom: 10px;">Olá, <strong>${firstName}</strong>!</p>
-          
-          <p style="font-size: 16px; margin-bottom: 25px;">Sua inscrição foi confirmada com sucesso!</p>
-          
-          <div style="background-color: #f7f7f7; border: 1px solid #eeeeee; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-            <p style="margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Dados de acesso:</p>
-            <p style="margin: 5px 0; font-size: 16px;"><strong>Email:</strong> <span>${email}</span></p>
-            <p style="margin: 5px 0; font-size: 16px;"><strong>Senha:</strong> <span>${password}</span></p>
+          <div style="margin-bottom: 25px;">
+            <p style="font-size: 18px; margin: 0 0 15px 0;">Olá, <strong>${firstName}</strong>!</p>
+            <p style="font-size: 16px; margin: 0;">Sua inscrição foi confirmada com sucesso!</p>
           </div>
           
-          <div style="text-align: center; margin: 30px 0;">
+          <div style="background-color: #f9f9f9; border: 1px solid #eeeeee; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #999999; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Dados de acesso:</p>
+            <p style="margin: 6px 0; font-size: 16px;"><strong>Email:</strong> <span style="color: #333 text-decoration: none;">${email}</span></p>
+            <p style="margin: 6px 0; font-size: 16px;"><strong>Senha:</strong> <span style="color: #333;">${password}</span></p>
+          </div>
+          
+          <div style="text-align: center; margin-bottom: 30px;">
             <a href="https://www.caminhodigitalmaster.com" 
-               style="background-color: #064e1b; display: inline-block; padding: 18px 60px; color: #1a1a1a; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 22px; letter-spacing: -0.5px; box-shadow: 0 4px 15px rgba(6, 78, 27, 0.2); font-family: sans-serif;">
+               style="background-color: #2ecc71; display: inline-block; padding: 18px 50px; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 20px; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);">
               Acesse aqui
             </a>
           </div>
 
-          <p style="font-size: 14px; color: #444; margin-bottom: 25px; padding: 15px; border-left: 4px solid #cccccc; background-color: #ffffff; border-radius: 4px; line-height: 1.5;">
-            <strong>ATENÇÃO:</strong> Por segurança, recomendamos que você altere sua senha imediatamente após o primeiro acesso à plataforma.
-          </p>
+          <div style="border-left: 4px solid #eeeeee; padding: 15px; background-color: #fafafa; margin-bottom: 30px; border-radius: 4px;">
+            <p style="font-size: 14px; color: #555555; margin: 0;">
+              <strong>ATENÇÃO:</strong> Por segurança, recomendamos que você altere sua senha imediatamente após o primeiro acesso à plataforma.
+            </p>
+          </div>
           
-          <div style="border-top: 1px solid #eee; padding-top: 25px; margin-top: 30px;">
+          <div style="border-top: 1px solid #eeeeee; padding-top: 20px;">
             <p style="font-size: 16px; margin: 0;">
               Nos vemos na área de membros!!<br><br>
               <strong>Breno Sena</strong>
             </p>
+          </div>
+          
+          <div style="display: none; white-space: nowrap; font: 15px courier; line-height: 0;">
+            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
           </div>
         </div>
       `
