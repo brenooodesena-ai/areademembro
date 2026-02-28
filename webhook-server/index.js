@@ -6,6 +6,7 @@ const { Resend } = require('resend');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
 
 // Log global de todas as requisições que chegam
 app.use((req, res, next) => {
@@ -67,30 +68,29 @@ async function sendWelcomeEmail(email, firstName, password) {
             html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff; color: #333;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #d4af37; font-size: 26px; margin: 0;">Caminho Digital Master</h1>
-            <div style="height: 2px; width: 60px; background-color: #d4af37; margin: 10px auto;"></div>
+            <img src="https://webhook-membros-cdm.onrender.com/logo.png" alt="Caminho Digital Master" style="max-height: 100px; width: auto;">
           </div>
 
           <p style="font-size: 17px; margin-bottom: 10px;">Olá, <strong>${firstName}</strong>!</p>
           
           <p style="font-size: 16px; margin-bottom: 25px;">Sua inscrição foi confirmada com sucesso! É um prazer ter você conosco.</p>
           
-          <div style="background-color: #fcfcfc; border: 1px solid #f0f0f0; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-            <p style="margin: 0 0 10px 0; font-size: 15px; color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Dados de acesso:</p>
-            <p style="margin: 5px 0; font-size: 16px;"><strong>Email:</strong> <span style="color: #d4af37;">${email}</span></p>
-            <p style="margin: 5px 0; font-size: 16px;"><strong>Senha:</strong> <span style="color: #d4af37;">${password}</span></p>
+          <div style="background-color: #f7f7f7; border: 1px solid #eeeeee; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+            <p style="margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Dados de acesso:</p>
+            <p style="margin: 5px 0; font-size: 16px;"><strong>Email:</strong> <span>${email}</span></p>
+            <p style="margin: 5px 0; font-size: 16px;"><strong>Senha:</strong> <span>${password}</span></p>
           </div>
-          
-          <p style="font-size: 14px; color: #cc0000; margin-bottom: 25px; padding: 15px; border-left: 4px solid #cc0000; background-color: #fff5f5; border-radius: 4px;">
-            <strong>ATENÇÃO:</strong> Por segurança, recomendamos que você altere sua senha imediatamente após o primeiro acesso à plataforma.
-          </p>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="https://www.caminhodigitalmaster.com" 
-               style="background-color: #FFB300; display: inline-block; padding: 18px 60px; color: #000000; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(255, 179, 0, 0.3);">
+               style="background-color: #27ae60; display: inline-block; padding: 18px 60px; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);">
               Acesse aqui
             </a>
           </div>
+
+          <p style="font-size: 14px; color: #444; margin-bottom: 25px; padding: 15px; border-left: 4px solid #cccccc; background-color: #ffffff; border-radius: 4px; line-height: 1.5;">
+            <strong>ATENÇÃO:</strong> Por segurança, recomendamos que você altere sua senha imediatamente após o primeiro acesso à plataforma.
+          </p>
           
           <div style="border-top: 1px solid #eee; padding-top: 25px; margin-top: 30px;">
             <p style="font-size: 16px; margin: 0;">
