@@ -221,14 +221,19 @@ app.post('/webhook', async (req, res) => {
                 });
                 console.log(`❌ SUCESSO: Acesso bloqueado para ${email}`);
             } else {
-                console.log(`⚠️ ALERTA: Recebi reembolso para ${email}, mas o aluno não existe no banco.`);
+                console.log(`❌ FALHA: Recebi reembolso para ${email}, mas o aluno não existe no banco.`);
             }
         }
+        else if (status !== 'paid' && status !== 'approved') {
+            console.log(`❓ STATUS NÃO MAPEADO RECEBIDO: email=${email}, status=${status}, eventType=${eventType}`);
+        }
 
-        return res.status(200).send('Webhook processado.');
+        // Responder sempre 200 OK o mais rápido possível para a Kiwify
+        return res.status(200).send({ status: 'success', message: 'Webhook received' });
     } catch (error) {
-        console.error('❌ Erro ao processar Firestore:', error);
-        return res.status(500).send('Erro interno do servidor.');
+        console.error('❌ Erro interno ao processar webhook:', error);
+        // Mesmo em erro, retornamos 200 para a Kiwify não ficar tentando reenviar se o erro for de lógica
+        return res.status(200).send({ status: 'error', message: error.message });
     }
 });
 
