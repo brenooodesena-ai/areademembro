@@ -165,6 +165,7 @@ app.post('/webhook', async (req, res) => {
 
         // CASO 1: Venda Aprovada (Paid ou Approved)
         if (status === 'paid' || status === 'approved') {
+            const now = new Date().toISOString();
             if (snapshot.empty) {
                 // Criar novo aluno
                 await studentsRef.add({
@@ -172,8 +173,10 @@ app.post('/webhook', async (req, res) => {
                     email: email,
                     status: 'approved',
                     progress: 0,
-                    created_at: admin.firestore.FieldValue.serverTimestamp(),
-                    lastAccess: admin.firestore.FieldValue.serverTimestamp(),
+                    created_at: now,
+                    lastAccess: now,
+                    purchase_at: now,
+                    approved_at: now,
                     password_hash: hashedPassword // Senha Hasheada
                 });
                 console.log(`✅ Novo aluno criado e aprovado: ${email}`);
@@ -185,8 +188,11 @@ app.post('/webhook', async (req, res) => {
                 const docRef = snapshot.docs[0].ref;
                 await docRef.update({
                     status: 'approved',
+                    name: fullName, // Garantir que o nome está atualizado
                     password_hash: hashedPassword, // Resetar para a senha padrão hasheada
-                    last_update: admin.firestore.FieldValue.serverTimestamp()
+                    lastAccess: now,
+                    purchase_at: now,
+                    approved_at: now
                 });
                 console.log(`✅ Aluno existente reativado: ${email}`);
 
