@@ -202,13 +202,26 @@ app.post('/webhook', async (req, res) => {
         }
 
         // CASO 2: Reembolso, Chargeback ou Cancelamento
-        else if (status === 'refunded' || status === 'chargeback' || status === 'canceled') {
+        const eventType = req.body.webhook_event_type;
+        const isRefund = status === 'refunded' ||
+            status === 'chargeback' ||
+            status === 'canceled' ||
+            eventType === 'order_refunded' ||
+            eventType === 'order_canceled';
+
+        if (isRefund) {
+            console.log(`🚨 PROCESSANDO REEMBOLSO/CANCELAMENTO para: ${email}`);
+            console.log(`DADOS: Status=${status}, Evento=${eventType}`);
+
             if (!snapshot.empty) {
+                const now = new Date().toISOString();
                 await snapshot.docs[0].ref.update({
                     status: 'rejected',
-                    cancel_at: admin.firestore.FieldValue.serverTimestamp()
+                    cancel_at: now
                 });
-                console.log(`❌ Acesso bloqueado (Reembolso/Cancelamento): ${email}`);
+                console.log(`❌ SUCESSO: Acesso bloqueado para ${email}`);
+            } else {
+                console.log(`⚠️ ALERTA: Recebi reembolso para ${email}, mas o aluno não existe no banco.`);
             }
         }
 
