@@ -72,6 +72,10 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
     const [newLessonThumbnail, setNewLessonThumbnail] = useState("");
     const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
     const [newLessonReleaseDays, setNewLessonReleaseDays] = useState<number | undefined>(0);
+    const [newLessonIsLink, setNewLessonIsLink] = useState(false);
+    const [newLessonLinkUrl, setNewLessonLinkUrl] = useState("");
+    const [newLessonLinkText, setNewLessonLinkText] = useState("");
+    const [newLessonLinkDescription, setNewLessonLinkDescription] = useState("");
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
     const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -254,6 +258,10 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonThumbnail(lesson.thumbnail || "");
         setNewLessonAttachments(lesson.attachments || []);
         setNewLessonReleaseDays(lesson.releaseDays || 0);
+        setNewLessonIsLink(lesson.is_link_lesson || false);
+        setNewLessonLinkUrl(lesson.link_url || "");
+        setNewLessonLinkText(lesson.link_text || "");
+        setNewLessonLinkDescription(lesson.link_description || "");
         setSelectedVideoFile(null);
 
         // Detect source type automatically
@@ -269,6 +277,10 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         setNewLessonThumbnail("");
         setNewLessonAttachments([]);
         setNewLessonReleaseDays(0);
+        setNewLessonIsLink(false);
+        setNewLessonLinkUrl("");
+        setNewLessonLinkText("");
+        setNewLessonLinkDescription("");
         setSelectedVideoFile(null);
         setIsUploading(false);
         setUploadProgress(0);
@@ -277,7 +289,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
 
     const handleSaveLesson = async (moduleId: string) => {
         if (!newLessonTitle.trim()) return;
-        const description = newLessonDescription.trim() ? newLessonDescription : "Sem descrição";
+        const description = newLessonDescription.trim();
 
         try {
             const moduleToUpdate = modules.find(m => m.id === moduleId);
@@ -305,7 +317,11 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                 videoId: finalVideoUrl,
                 thumbnail: newLessonThumbnail,
                 attachments: newLessonAttachments,
-                releaseDays: newLessonReleaseDays
+                releaseDays: newLessonReleaseDays,
+                is_link_lesson: newLessonIsLink,
+                link_url: newLessonLinkUrl,
+                link_text: newLessonLinkText,
+                link_description: newLessonLinkDescription
             };
 
             let updatedLessons;
@@ -1415,35 +1431,93 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                             onChange={(e) => setNewLessonDescription(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
                                         />
-                                        {/* URL do Vídeo */}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                                                    <PlayCircle size={12} /> Link do Vídeo (YouTube, Vimeo, Panda, Bunny...)
-                                                </label>
-                                                {newLessonVideoId && (
-                                                    <button
-                                                        onClick={() => setNewLessonVideoId("")}
-                                                        className="text-[10px] text-red-500/60 hover:text-red-500 transition-colors flex items-center gap-1"
-                                                    >
-                                                        <Trash2 size={10} /> Remover
-                                                    </button>
-                                                )}
+                                        {/* Toggle de Tipo de Aula (Vídeo vs Link Externo) */}
+                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setNewLessonIsLink(!newLessonIsLink)}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${newLessonIsLink ? 'bg-gold-500/20 text-gold-500' : 'bg-black/40 text-white/40'}`}>
+                                                    <LinkIcon size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white">Acesso a Grupo / Link Externo</p>
+                                                    <p className="text-xs text-white/40">Em vez de vídeo, exibir um botão com link</p>
+                                                </div>
                                             </div>
-                                            <input
-                                                type="text"
-                                                placeholder="Cole o link aqui (qualquer formato)..."
-                                                className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
-                                                value={newLessonVideoId}
-                                                onChange={(e) => setNewLessonVideoId(e.target.value)}
-                                                onKeyDown={(e) => e.stopPropagation()}
-                                            />
-                                            <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                                                <p className="text-[10px] text-white/40 leading-relaxed italic">
-                                                    <span className="text-gold-500 font-bold">Dica:</span> Agora você pode copiar o link direto da barra de endereço do seu navegador. O sistema converte automaticamente!
-                                                </p>
+                                            <div className={`w-12 h-6 rounded-full transition-colors relative flex items-center ${newLessonIsLink ? 'bg-gold-500' : 'bg-white/10'}`}>
+                                                <div className={`w-4 h-4 rounded-full bg-white absolute transition-transform ${newLessonIsLink ? 'translate-x-7' : 'translate-x-1'}`} />
                                             </div>
                                         </div>
+
+                                        {!newLessonIsLink ? (
+                                            <>
+                                                {/* URL do Vídeo */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                                                            <PlayCircle size={12} /> Link do Vídeo (YouTube, Vimeo, Panda, Bunny...)
+                                                        </label>
+                                                        {newLessonVideoId && (
+                                                            <button
+                                                                onClick={() => setNewLessonVideoId("")}
+                                                                className="text-[10px] text-red-500/60 hover:text-red-500 transition-colors flex items-center gap-1"
+                                                            >
+                                                                <Trash2 size={10} /> Remover
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Cole o link aqui (qualquer formato)..."
+                                                        className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
+                                                        value={newLessonVideoId}
+                                                        onChange={(e) => setNewLessonVideoId(e.target.value)}
+                                                        onKeyDown={(e) => e.stopPropagation()}
+                                                    />
+                                                    <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                                        <p className="text-[10px] text-white/40 leading-relaxed italic">
+                                                            <span className="text-gold-500 font-bold">Dica:</span> Agora você pode copiar o link direto da barra de endereço do seu navegador. O sistema converte automaticamente!
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* Campos de Link Externo */}
+                                                <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/5">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Texto do Quadro</label>
+                                                        <textarea
+                                                            placeholder="Ex: Clique no link abaixo para entrar no grupo VIP dos alunos."
+                                                            className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm resize-y min-h-[80px]"
+                                                            value={newLessonLinkDescription}
+                                                            onChange={(e) => setNewLessonLinkDescription(e.target.value)}
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">URL de Destino</label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="Ex: https://chat.whatsapp.com/..."
+                                                            className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
+                                                            value={newLessonLinkUrl}
+                                                            onChange={(e) => setNewLessonLinkUrl(e.target.value)}
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Texto do Botão</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Ex: CLIQUE AQUI PARA ACESSAR O GRUPO VIP"
+                                                            className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 focus:border-gold-400 outline-none text-sm"
+                                                            value={newLessonLinkText}
+                                                            onChange={(e) => setNewLessonLinkText(e.target.value)}
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
 
                                         {/* Liberação Programada */}
                                         <div className="space-y-2 bg-white/5 p-4 rounded-xl border border-white/5">
@@ -1962,7 +2036,7 @@ function SortableLesson({ lesson, startEditingLesson, deleteLesson, moduleId }: 
             </div>
             <div className="flex-1 min-w-0 py-2">
                 <h4 className="font-bold text-lg text-white mb-1">{lesson.title}</h4>
-                <p className="text-base text-white/50 truncate max-w-2xl">{lesson.description || "Sem descrição definida"}</p>
+                <p className="text-base text-white/50 truncate max-w-2xl">{lesson.description}</p>
             </div>
             <div className="flex gap-3" onPointerDown={(e) => e.stopPropagation()}>
                 <button

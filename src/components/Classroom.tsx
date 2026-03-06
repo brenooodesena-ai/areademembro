@@ -61,6 +61,40 @@ export function Classroom({ module, onBack, studentPurchaseDate }: ClassroomProp
             );
         }
 
+        if (activeLesson.is_link_lesson) {
+            return (
+                <div className="space-y-8">
+                    <div className="w-full aspect-video md:aspect-auto md:min-h-[500px] rounded-xl border border-white/5 bg-[#0a0a0a] flex flex-col items-start justify-center p-8 md:p-12 relative overflow-hidden shadow-2xl">
+                        {activeLesson.link_description && (
+                            <p className="text-white/90 mb-8 max-w-4xl text-base md:text-lg leading-relaxed text-left whitespace-pre-wrap">
+                                {activeLesson.link_description}
+                            </p>
+                        )}
+                        <a
+                            href={activeLesson.link_url || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-400 font-medium transition-colors text-sm md:text-base uppercase tracking-wide cursor-pointer"
+                        >
+                            {activeLesson.link_text || "CLIQUE AQUI PARA TER ACESSO"}
+                        </a>
+                    </div>
+
+                    {activeLesson.description && (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8">
+                            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-gold-500 rounded-full"></span>
+                                Sobre esta aula
+                            </h3>
+                            <p className="text-white/60 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+                                {activeLesson.description}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         if (activeLesson.videoId) {
             const url = activeLesson.videoId.trim();
 
@@ -294,9 +328,11 @@ export function Classroom({ module, onBack, studentPurchaseDate }: ClassroomProp
                                     {activeLesson.title}
                                 </h1>
 
-                                <p className="text-white/60 text-sm md:text-base leading-relaxed whitespace-pre-wrap max-w-3xl">
-                                    {activeLesson.description || 'Sem descrição disponível para esta aula.'}
-                                </p>
+                                {activeLesson.description && (
+                                    <p className="text-white/60 text-sm md:text-base leading-relaxed whitespace-pre-wrap max-w-3xl">
+                                        {activeLesson.description}
+                                    </p>
+                                )}
 
                                 {/* Navigation Buttons */}
                                 <div className="flex gap-3 pt-6">

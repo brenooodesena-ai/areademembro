@@ -31,6 +31,10 @@ export interface Lesson {
     attachments?: Attachment[];
     order_index?: number;
     releaseDays?: number; // Dias para liberar após a compra
+    is_link_lesson?: boolean;
+    link_url?: string;
+    link_text?: string;
+    link_description?: string;
 }
 
 export interface Module {
@@ -172,6 +176,10 @@ export const db = {
                 thumbnail: l.thumbnail || "",
                 attachments: l.attachments || [],
                 releaseDays: l.releaseDays || 0,
+                is_link_lesson: l.is_link_lesson || false,
+                link_url: l.link_url || "",
+                link_text: l.link_text || "",
+                link_description: l.link_description || "",
                 order_index: i
             };
 
@@ -201,7 +209,11 @@ export const db = {
             videoId: lesson.videoId || "",
             thumbnail: lesson.thumbnail || "",
             attachments: lesson.attachments || [],
-            releaseDays: lesson.releaseDays || 0
+            releaseDays: lesson.releaseDays || 0,
+            is_link_lesson: lesson.is_link_lesson || false,
+            link_url: lesson.link_url || "",
+            link_text: lesson.link_text || "",
+            link_description: lesson.link_description || ""
         };
 
         if (isNew) {

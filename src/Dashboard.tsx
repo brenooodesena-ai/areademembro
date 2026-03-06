@@ -19,6 +19,10 @@ export interface Lesson {
     thumbnail?: string;
     attachments?: Attachment[];
     releaseDays?: number;
+    is_link_lesson?: boolean;
+    link_url?: string;
+    link_text?: string;
+    link_description?: string;
 }
 
 export interface Module {

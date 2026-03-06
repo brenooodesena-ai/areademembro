@@ -39,8 +39,14 @@ function App() {
       try {
         // Fetch modules and banner in parallel
         const [modules, banner] = await Promise.all([
-          db.getModules(),
-          db.getBannerConfig()
+          db.getModules().catch(err => {
+            console.warn("⚠️ Falha ao buscar módulos do Firestore, usando padrão:", err);
+            return null;
+          }),
+          db.getBannerConfig().catch(err => {
+            console.warn("⚠️ Falha ao buscar banner do Firestore, usando padrão:", err);
+            return null;
+          })
         ]);
 
         // MIGRATION CHECK: Detect legacy default data
@@ -51,9 +57,14 @@ function App() {
           localStorage.setItem('cached_modules', JSON.stringify(modules));
           console.log("✅ Módulos carregados do Firestore:", modules.length);
         } else {
-          console.log("⚠️ Banco vazio ou dados antigos detectados. Usando curriculum padrão.");
+          console.log("⚠️ Banco vazio ou dados antigos detectados (ou offline). Usando curriculum padrão.");
           setAppModules(initialModules);
-          localStorage.removeItem('cached_modules');
+          // Não remove o cache se estiver apenas offline para manter o que já tinha
+          if (modules === null) {
+            console.log("ℹ️ Mantendo módulos em cache por falha de conexão.");
+          } else {
+            localStorage.removeItem('cached_modules');
+          }
         }
 
         if (banner) {
@@ -61,7 +72,8 @@ function App() {
           localStorage.setItem('cached_banner', JSON.stringify(banner));
         }
       } catch (error) {
-        console.error("Erro ao carregar dados:", error);
+        console.error("Erro crítico ao carregar dados, ativando modo offline:", error);
+        setAppModules(initialModules);
       } finally {
         setIsLoading(false);
       }
