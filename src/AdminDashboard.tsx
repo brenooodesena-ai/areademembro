@@ -1358,9 +1358,8 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
 
                             <div className="border-t border-white/10 pt-6">
                                 <h4 className="font-bold mb-4">Configuração de Webhook</h4>
-                                <div className="bg-black-900 rounded-lg p-4 font-mono text-sm text-white/60 break-all select-all cursor-pointer hover:bg-black-800 transition-colors border border-white/5">
-                                    {/* Webhook URL for Kiwify Integration (Migration to Firebase in progress) */}
-                                    No Kiwify: Use o seu endpoint de webhook configurado.
+                                <div className="bg-black-900 rounded-lg p-4 font-mono text-sm text-gold-400 break-all select-all cursor-pointer hover:bg-black-800 transition-colors border border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+                                    https://webhook-membros-cdm.onrender.com/webhook
                                 </div>
                                 <p className="text-white/30 text-xs mt-2">Configure este URL na Kiwify ou Cakto. Certifique-se de ter adicionado a "RESEND_API_KEY" nos Secrets do Supabase.</p>
                             </div>
