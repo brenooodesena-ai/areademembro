@@ -45,7 +45,7 @@ export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 'welcome',
-            text: "Olá! Sou o seu **IA Mentor**. Estou aqui para transformar o seu conhecimento em ativos digitais lucrativos e previsíveis. \n\nMinha mentoria é focada em **execução, métricas e ROI**. Como posso acelerar o seu negócio hoje?",
+            text: "Seja bem-vindo. Sou o seu **IA Mentor**, especializado na estruturação e escala de negócios digitais. \n\nMinha consultoria é pautada em **métricas sólidas, ROI e eficiência operacional**. Estou à disposição para analisar sua estratégia e orientar seus próximos passos. Como posso auxiliá-lo hoje?",
             sender: 'ai',
             timestamp: new Date()
         }
@@ -69,7 +69,7 @@ export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
     const generateResponse = (query: string): string => {
         const lowerQuery = query.toLowerCase();
 
-        // 1. Check for Module Intent (Higher Priority for Specificity)
+        // 1. Check for Module Intent (Formalized)
         const isModulo = lowerQuery.includes('módulo') || lowerQuery.includes('modulo');
         if (isModulo) {
             const moduleNumberMatch = lowerQuery.match(/\d+/);
@@ -78,34 +78,34 @@ export function StudentAI({ modules, isOpen, onClose }: StudentAIProps) {
                 const module = modules[moduleIndex];
 
                 if (module) {
-                    // Normalize title for better matching (removes emojis or extra spaces if any)
                     const cleanTitle = module.title.trim();
                     const info = MODULE_INFO[cleanTitle];
 
                     if (info) {
                         return `
-**${cleanTitle} / Módulo ${moduleIndex + 1}**
+**Análise do Módulo ${moduleIndex + 1}: ${cleanTitle}**
 
 ${info.description}
 
-🎯 **Objetivo do Módulo**: ${info.objective}
+🎯 **Objetivo Estratégico**: ${info.objective}
 
-Recomendo assistir as aulas e já ir executando no seu painel. O conhecimento sem aplicação é apenas entretenimento.
-`.trim();
-                    } else {
-                        return `
-**Módulo ${moduleIndex + 1}: ${module.title}**
-
-Este módulo contém ${module.lessonCount} aulas focadas na parte prática do nosso método. Mergulhe no conteúdo e aplique cada passo imediatamente.
-
-🎯 **Objetivo do Módulo**: Capacitar você na execução técnica deste pilar do treinamento.
+Orientação: Recomendo a conclusão integral das aulas deste pilar antes de avançar para a escala técnica. A execução precisa é o que diferencia amadores de profissionais.
 `.trim();
                     }
                 }
             }
         }
 
-        // 2. Strategic Intent Matching
+        // 2. Intent Detection
+        const informationalKeywords = ['o que é', 'que é', 'significa', 'definição', 'conceito', 'explica', 'sobre'];
+        const strategicKeywords = ['como', 'melhorar', 'estratégia', 'ajuda', 'fazer', 'escala', 'otimizar', 'aplicar'];
+        const tacticalKeywords = ['ação', 'metrica', 'métrica', 'erro', 'prática', 'executar', 'passo a passo'];
+
+        const isInformational = informationalKeywords.some(k => lowerQuery.includes(k));
+        const isStrategic = strategicKeywords.some(k => lowerQuery.includes(k));
+        const wantsTactics = tacticalKeywords.some(k => lowerQuery.includes(k));
+
+        // 3. Strategic Intent Matching
         let matchedStrategy = null;
         let highestScore = 0;
 
@@ -125,20 +125,30 @@ Este módulo contém ${module.lessonCount} aulas focadas na parte prática do no
         }
 
         if (matchedStrategy) {
-            return `
-${matchedStrategy.response}
+            let response = "";
+            
+            // Prioritize Definition for "What is" queries, Strategy for others
+            if (isInformational && !isStrategic) {
+                response = matchedStrategy.definition;
+            } else {
+                response = matchedStrategy.strategy;
+            }
 
-🎯 **Ação Imediata**: ${matchedStrategy.action}
-📊 **Métrica Crítica**: ${matchedStrategy.metric}
-⚠️ **Erro do 1%**: Pare de apenas "estudar" e comece a executar. Um ativo imperfeito no ar é melhor que uma estratégia perfeita na gaveta.
-`.trim();
+            // Append tactical sections only if strategic intent or explicitly requested
+            if (isStrategic || wantsTactics) {
+                response += `\n\n🎯 **Ação Imediata**: ${matchedStrategy.action}`;
+                response += `\n📊 **Métrica Crítica**: ${matchedStrategy.metric}`;
+                response += `\n⚠️ **Aviso de Execução**: Um ativo imperfeito no ar é superior a uma estratégia perfeita que nunca saiu da gaveta. Priorize o movimento.`;
+            }
+
+            return response.trim();
         }
 
-        // 3. Fallback (General/Gentle Advice)
+        // 4. Fallback (Formalized)
         return `
 ${FALLBACK_STRATEGY.response}
 
-Estou aqui para te guiar especificamente em: **Criativos, Copywriting, Tráfego e Vendas**. Se tiver uma dúvida técnica sobre os módulos, cite o número dele!
+Atualmente, posso orientá-lo especificamente em: **Criativos, Copywriting, Tráfego e Estrutura de Vendas**. Caso sua dúvida seja técnica sobre um módulo, favor citar o número correspondente.
 `.trim();
     };
 

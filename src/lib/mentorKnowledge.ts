@@ -1,6 +1,7 @@
 export interface StrategicResponse {
     keywords: string[];
-    response: string;
+    definition: string;
+    strategy: string;
     action: string;
     metric: string;
 }
@@ -12,167 +13,125 @@ export interface ModuleInfo {
 
 export const MODULE_INFO: Record<string, ModuleInfo> = {
     "Bem vindo (a)": {
-        description: "Neste módulo, você terá uma visão clara de como o treinamento funciona, entenderá a lógica do método e aprenderá a se posicionar corretamente desde o início, criando segurança, clareza e direção para seguir o caminho certo no mercado digital.",
-        objective: "Integrar o aluno ao treinamento e alinhar a mentalidade para o sucesso."
+        description: "Neste módulo, apresentamos a visão panorâmica do treinamento, a lógica do nosso método e o posicionamento estratégico necessário para obter resultados sólidos no mercado digital.",
+        objective: "Integrar o aluno e alinhar a mentalidade para a execução de alto nível."
     },
     "Avisos e Suporte": {
-        description: "Neste módulo, você terá acesso ao número oficial de suporte do treinamento e ao grupo VIP dos alunos, além de entender todas as regras de funcionamento desses canais. Este módulo também será o espaço onde serão comunicados avisos importantes, atualizações e novidades do treinamento.",
-        objective: "Garantir suporte eficiente e manter o aluno atualizado sobre o treinamento."
+        description: "Aqui você encontrará os canais oficiais de suporte, o acesso ao grupo VIP e as diretrizes para garantir uma comunicação eficiente com a nossa equipe.",
+        objective: "Assegurar que o aluno tenha todo o suporte técnico e estratégico necessário."
     },
     "Caminho Iluminado": {
-        description: "Neste módulo, você irá alinhar sua mentalidade à realidade do mercado digital, compreender o que realmente funciona e aprender desde o básico, adquirindo uma base sólida de conhecimento sobre o mercado digital para evoluir com constância, disciplina e visão de longo prazo.",
-        objective: "Estabelecer uma base teórica e mental sólida para o crescimento sustentável."
+        description: "Um módulo dedicado à base teórica e mental. Compreender a realidade do mercado é o primeiro passo para construir um negócio sustentável e escalável.",
+        objective: "Estabelecer fundamentos sólidos para o crescimento constante."
     },
     "Afiliado de Sucesso": {
-        description: "Neste módulo, você entenderá como funciona o mercado de afiliados, aprenderá a escolher produtos e estratégias de forma consciente e desenvolverá a capacidade de estruturar vendas como afiliado com profissionalismo e consistência.",
-        objective: "Capacitar o aluno a realizar vendas consistentes no mercado de afiliados."
+        description: "Explora o ecossistema de afiliados, desde a seleção criteriosa de produtos até as estratégias de venda direta e indireta.",
+        objective: "Profissionalizar a atuação do aluno como afiliado estratégico."
     },
     "Como ser Produtor": {
-        description: "Neste módulo, você compreenderá a lógica da criação de produtos digitais, aprenderá a estruturar e posicionar seus próprios produtos no mercado e desenvolverá visão de negócio para construir ativos digitais sólidos e escaláveis.",
-        objective: "Ensinar a criação, estruturação e lançamento de produtos digitais próprios."
+        description: "O passo a passo para a criação, estruturação e lançamento de produtos digitais que resolvem dores reais do mercado.",
+        objective: "Transformar conhecimento em ativos digitais proprietários."
     },
     "Estrutura de vendas": {
-        description: "Neste módulo, você entenderá como funcionam as engrenagens de uma estrutura de vendas eficiente, aprenderá a montar funis, páginas e ofertas estratégicas e criará sistemas capazes de gerar conversões de forma previsível.",
-        objective: "Construir sistemas de vendas previsíveis e funis de alta conversão."
+        description: "A engenharia por trás dos funis de alta conversão, páginas de vendas persuasivas e sistemas de automação.",
+        objective: "Construir uma máquina de vendas previsível e eficiente."
     },
     "Marketing de Conteudo": {
-        description: "Neste módulo, você aprenderá como o conteúdo influencia decisões de compra, entenderá como construir autoridade no mercado e desenvolverá estratégias de conteúdo que atraem, engajam e convertem o público certo.",
-        objective: "Utilizar o conteúdo estrategicamente para atrair leads e vender autoridade."
+        description: "Como utilizar o conteúdo para construir autoridade, gerar desejo e preparar o lead para o momento da compra.",
+        objective: "Atrair e qualificar a audiência através de valor real."
     },
     "Como fazer Copywriting": {
-        description: "Neste módulo, você compreenderá a psicologia da venda, aprenderá a utilizar gatilhos mentais de forma ética e estratégica e desenvolverá textos persuasivos que aumentam significativamente suas taxas de conversão.",
-        objective: "Dominar a escrita persuasiva focada em maximizar o lucro."
+        description: "A ciência da escrita persuasiva. Aplicação de gatilhos mentais e estruturas narrativas focadas em conversão.",
+        objective: "Dominar a comunicação que converte atenção em faturamento."
     },
     "Como subir Caixa rápido": {
-        description: "Neste módulo, você aprenderá estratégias práticas para gerar caixa no curto prazo, entenderá como acelerar resultados financeiros e criar capital inicial para investir de forma estratégica no seu próprio negócio digital.",
-        objective: "Gerar faturamento rápido para reinvestimento e capitalização do projeto."
+        description: "Estratégias práticas para geração de liquidez imediata no curto prazo, permitindo o reinvestimento no crescimento do negócio.",
+        objective: "Acelerar a capitalização para sustentar a escala de futuras operações."
     },
     "Tráfego Organico": {
-        description: "Neste módulo, você entenderá como gerar tráfego e vendas sem investimento em anúncios, aprenderá a usar redes sociais de forma estratégica e desenvolverá consistência através de métodos orgânicos sustentáveis.",
-        objective: "Dominar a venda sem custos de anúncios através de audiência orgânica."
+        description: "Estratégias para gerar alcance e vendas sem investimento direto em anúncios, aproveitando o algoritmo das redes sociais.",
+        objective: "Escalar a audiência e o faturamento através de conteúdo estratégico."
     },
     "Tráfego Pago": {
-        description: "Neste módulo, você aprenderá como funciona a lógica dos anúncios pagos, entenderá o comportamento do algoritmo e desenvolverá campanhas no Facebook Ads com controle, estratégia e escalabilidade.",
-        objective: "Escalar vendas através de anúncios pagos com controle total de ROI."
+        description: "O domínio das plataformas de anúncios para comprar atenção qualificada e acelerar o retorno sobre investimento (ROI).",
+        objective: "Escalar resultados através de compra de dados e otimização de campanhas."
     },
     "Venda com o WhatsApp": {
-        description: "Neste módulo, você compreenderá como utilizar o WhatsApp como ferramenta de vendas, aprenderá a conduzir conversas estratégicas e desenvolverá abordagens que aumentam a conversão sem pressão ou desgaste.",
-        objective: "Converter leads no 1 a 1 de forma profissional e escalável."
+        description: "Técnicas de fechamento no um a um, diagnósticos de leads e scripts de alta conversão para o aplicativo de mensagens.",
+        objective: "Maximizar a conversão de leads qualificados através do contato direto."
     },
     "Inteligência Artificial": {
-        description: "Aqui você entenderá como a inteligência artificial pode acelerar processos no marketing digital, aprenderá a aplicá-la na criação de conteúdo, copy e estratégias e ganhará produtividade e vantagem competitiva.",
-        objective: "Aumentar a produtividade e eficiência usando ferramentas de IA."
+        description: "Como integrar ferramentas de IA para otimizar a criação de conteúdo, copy e análise de dados no seu negócio.",
+        objective: "Aumentar a produtividade e a competitividade usando tecnologia de ponta."
     },
     "Remarketing Estrategico": {
-        description: "Neste módulo, você aprenderá a utilizar o remarketing de forma estratégica para recuperar vendas perdidas, reimpactar potenciais clientes que não compraram no primeiro contato e aumentar suas conversões com ações direcionadas e inteligentes.",
-        objective: "Recuperar leads e aumentar o faturamento através de reimpacto constante."
+        description: "A arte de reimpactar leads que demonstraram interesse inicial mas não converteram, utilizando mensagens personalizadas.",
+        objective: "Recuperar vendas perdidas e otimizar o custo de aquisição (CAC)."
     },
     "Pós-venda inteligente": {
-        description: "Aqui você compreenderá a importância do pós-venda na construção de negócios duradouros, aprenderá a encantar clientes após a compra e desenvolverá estratégias para recompra, fidelização e indicações.",
-        objective: "Fidelizar clientes e gerar LTV através de um atendimento de excelência."
+        description: "Procedimentos para encantar o cliente após a compra, garantindo satisfação e estimulando o LTV (Life Time Value).",
+        objective: "Fidelizar clientes e gerar recomendações orgânicas de alto valor."
     },
     "Obrigado": {
-        description: "Neste módulo final, você receberá a mensagem de encerramento do treinamento, reforçando a importância da continuidade, da aplicação do que foi aprendido e deixando o caminho aberto para sua evolução contínua no mercado digital.",
-        objective: "Encerrar o ciclo de aprendizado e incentivar a aplicação dos conhecimentos."
+        description: "Encerramento formal do ciclo de treinamento e diretrizes para a continuidade da evolução profissional.",
+        objective: "Consolidar o aprendizado e incentivar a prática contínua."
     }
 };
 
 export const MENTOR_KNOWLEDGE: Record<string, StrategicResponse> = {
     creative: {
         keywords: ['criativo', 'anuncio', 'ads', 'imagem', 'video', 'ad', 'creative'],
-        response: `**O segredo de um criativo de alto valor não é o design, é a psicologia de interrupção de padrão.**
-
-Para criar um anúncio que realmente converte, você precisa dominar o framework **H.O.D.A. (Hook, Observation, Desire, Action)**:
-
-1. **HOOK (Gancho)**: Os primeiros 3 segundos decidem se você ganha ou perde dinheiro. Use uma quebra de expectativa ou um problema latente que o seu público ignora.
-2. **OBSERVATION (Aprofundamento)**: Explique o porquê daquele problema existir. Mostre que você entende a dor dele melhor do que ele mesmo.
-3. **DESIRE (Desejo)**: Apresente o "Veículo de Transformação". Não venda o produto, venda o estado final (o ROI, a liberdade, o resultado).
-4. **ACTION (Chamada para Ação)**: Seja direto. Se o comando for vago, a ação será nula.
-
-**Lembre-se**: O criativo não vende o produto, ele vende o **clique**. O trabalho de vender o produto é da sua página ou do seu script de WhatsApp.`,
-        action: "Grave 3 variações de ganchos (hooks) diferentes para o mesmo produto e teste qual retém mais a atenção.",
-        metric: "CTR (Taxa de Clique) - Se estiver abaixo de 1.5% no Facebook Ads, seu criativo está falhando no Gancho ou na Oferta."
+        definition: "Um criativo é a peça visual ou em vídeo utilizada em uma campanha de anúncios para captar a atenção do usuário no feed. Sua principal função não é vender o produto diretamente, mas sim vender o 'clique', levando o potencial cliente para a próxima etapa do funil.",
+        strategy: "Para maximizar a performance, utilize o framework H.O.D.A. (Hook, Observation, Desire, Action). O foco deve estar nos primeiros 3 segundos (Gancho) para interromper o padrão de rolagem do usuário. Teste variações constantes para identificar qual ângulo de comunicação ressoa melhor com o seu público.",
+        action: "Grave 3 variações de ganchos (hooks) diferentes e realize um teste A/B para identificar qual retém maior atenção.",
+        metric: "CTR (Taxa de Clique) - O ideal é manter acima de 1.5% no Facebook Ads para garantir um custo por clique saudável."
     },
     copywriting: {
-        keywords: ['copy', 'escrita', 'texto', 'legenda', 'vsl', 'script'],
-        response: `**Copywriting é a arte de transferir confiança através das palavras.**
-
-Uma copy de sucesso segue a regra de ouro: **Uma única Big Idea, uma única Emoção dominante, um único Benefício principal.**
-
-No seu treinamento, focamos em três pilares:
-- **Mecanismo Único**: Por que a sua solução é diferente de tudo o que o seu cliente já tentou e falhou?
-- **Prova Social Estratégica**: Não use apenas depoimentos; use histórias de transformação que eliminem objeções específicas.
-- **Escassez Real**: Se o seu cliente sentir que pode comprar amanhã, ele não comprará hoje. A procrastinação é o maior inimigo do seu ROI.`,
-        action: "Identifique as 3 maiores objeções do seu avatar e escreva um parágrafo quebrando cada uma delas usando lógica e prova.",
-        metric: "Taxa de Conversão na Página de Vendas - O ideal é que esteja acima de 2-3% para tráfego frio."
+        keywords: ['copy', 'escrita', 'texto', 'legenda', 'vsl', 'script', 'persuasão'],
+        definition: "Copywriting é a aplicação de técnicas de escrita persuasiva com o objetivo de guiar o leitor a tomar uma ação específica. É a arte de comunicar o valor de uma oferta de forma que as objeções sejam eliminadas e o desejo de compra seja despertado.",
+        strategy: "Uma copy eficiente deve focar em uma única 'Big Idea'. Evite confundir o lead com excesso de informações. Estruture sua narrativa em torno de um Mecanismo Único de solução, Prova Social inquestionável e uma Escassez que gere urgência real.",
+        action: "Identifique as 3 maiores objeções do seu avatar e escreva parágrafos específicos que as quebrem utilizando lógica e evidências.",
+        metric: "Taxa de Conversão da Página - No tráfego frio, buscamos uma taxa acima de 2-3% para validação do funil."
     },
     traffic_paid: {
         keywords: ['pago', 'ads', 'facebook ads', 'google ads', 'patrocinado', 'anunciar', 'investir em trafego', 'trafego', 'tráfego'],
-        response: `**Tráfego Pago é sobre comprar dados e acelerar o seu ROI.**
-
-No tráfego pago, você não está gastando dinheiro, você está comprando atenção qualificada. O segredo da escala é:
-1. **Fase de Teste**: Invista pouco em vários públicos diferentes com o mesmo criativo vencedor.
-2. **Fase de Otimização**: Mate o que é caro, escale o que traz ROI positivo.
-3. **Fase de Escala**: Aumente o orçamento gradualmente (15-20% ao dia) para não resetar o aprendizado do algoritmo.
-
-O tráfego pago exige que sua **Oferta** esteja 100% validada, ou você apenas queimará caixa mais rápido.`,
-        action: "Estruture uma campanha de CBO com 3 conjuntos para testar públicos de interesse vs Lookalike.",
-        metric: "ROAS (Retorno sobre Investimento em Anúncios) - Mantenha o foco no lucro líquido, não apenas no faturamento bruto."
+        definition: "Tráfego Pago consiste no investimento financeiro em plataformas publicitárias (como Facebook, Instagram e Google) para exibir seus anúncios para um público segmentado. É uma forma de 'comprar dados' e atenção qualificada de forma imediata.",
+        strategy: "O sucesso no tráfego pago reside no equilíbrio entre oferta validada e otimização de dados. Divida sua operação em três fases: Teste (públicos e criativos), Otimização (manutenção de ROI positivo) e Escala (aumento gradual de orçamento entre 15% e 20% ao dia).",
+        action: "Estruture uma campanha de CBO (Campaign Budget Optimization) com 3 conjuntos para testar públicos de interesse versus Lookalike.",
+        metric: "ROAS (Retorno sobre Investimento em Anúncios) - Priorize sempre o lucro líquido sobre o faturamento bruto."
     },
     traffic_organic: {
-        keywords: ['organico', 'orgânico', 'sem pagar', 'reels', 'tiktok', 'postagem', 'conteudo', 'conteúdo', 'viral', 'seguidores', 'alcance organico', 'ganhar seguidores', 'trafego', 'tráfego'],
-        response: `**Tráfego Orgânico é sobre construção de autoridade e ativos de longo prazo.**
-
-Diferente do pago, aqui o investimento é o seu **tempo** e **criatividade**. Para um tráfego orgânico profissional:
-1. **Pilar de Conteúdo**: Crie conteúdo que resolva uma dor pequena imediatamente. Isso gera reciprocidade.
-2. **Algoritmo de Retenção**: No Reels e TikTok, o que importa são os primeiros 2 segundos e o tempo de visualização. Se as pessoas pulam seu vídeo, o algoritmo para de entregar.
-3. **CTA Estratégico**: Não poste por postar. Cada peça de conteúdo deve levar o lead para um próximo passo (Link na Bio, Direct ou Grupo).
-
-O orgânico é a base da confiança. Ele diminui o seu custo de aquisição (CAC) no longo prazo.`,
-        action: "Crie uma linha editorial de 7 dias focada em 'Quebra de Objeções' através de Reels curtos de 15 segundos.",
-        metric: "Taxa de Engajamento e Cliques na Bio - Monitore quantos seguidores realmente estão descendo no seu funil."
+        keywords: ['organico', 'orgânico', 'sem pagar', 'reels', 'tiktok', 'postagem', 'conteudo', 'conteúdo', 'viral', 'seguidores', 'alcance organico', 'ganhar seguidores'],
+        definition: "Tráfego Orgânico é a audiência gerada através da entrega natural de conteúdo pelas plataformas, sem custo direto por anúncio. É baseado na construção de autoridade, relacionamento e entrega de valor consistente ao longo do tempo.",
+        strategy: "Foque em retenção e engajamento inicial. No Reels e TikTok, os primeiros 2 segundos determinam o alcance. Utilize uma linha editorial que alterne entre Conteúdo de Topo de Funil (alcance) e Conteúdo de Fundo de Funil (venda), sempre com um CTA (chamada para ação) claro.",
+        action: "Crie um cronograma de 7 dias focado em Reels curtos (até 15s) que resolvam uma dor específica do seu público.",
+        metric: "Taxa de Engajamento e Cliques no Link da Bio - Monitore o fluxo de seguidores para o seu funil de vendas."
     },
     traffic_direct: {
-        keywords: ['direto', 'venda direta', 'trafego direto', 'tráfego direto', 'mandar para o link', 'sem aparecer', 'trafego', 'tráfego'],
-        response: `**Tráfego Direto é a estratégia de levar o lead do anúncio direto para o checkout ou página de vendas, sem etapas intermediárias.**
-
-Esta é a forma mais rápida de escalar, mas também a que exige a **Copy** mais agressiva e persuasiva:
-1. **Alinhamento Perfeito**: O que o anúncio promete, a página de vendas DEVE entregar no primeiro parágrafo.
-2. **Velocidade de Carregamento**: Se sua página demorar mais de 3 segundos para carregar, você perde 50% do tráfego.
-3. **Oferta Irresistível**: No tráfego direto, o cliente não tem tempo de criar relacionamento com você, então a oferta precisa ser um "no-brainer" (óbvia).`,
-        action: "Verifique a velocidade da sua página de vendas no Google PageSpeed Insights agora mesmo.",
-        metric: "Taxa de Abandono de Checkout - Se as pessoas chegam no checkout mas não compram, sua quebra de objeções final está falhando."
+        keywords: ['direto', 'venda direta', 'trafego direto', 'tráfego direto', 'mandar para o link', 'sem aparecer'],
+        definition: "Tráfego Direto é a estratégia de enviar o potencial cliente diretamente do anúncio para a página de vendas ou checkout. É um modelo focado em velocidade de escala e conversão imediata, ideal para produtos de ticket baixo ou médio.",
+        strategy: "A página de destino deve ser extremamente rápida e a oferta deve ser apresentada como uma solução óbvia ('no-brainer'). O alinhamento entre o criativo e a promessa da página deve ser perfeito para evitar quebras de expectativa e quedas na conversão.",
+        action: "Realize um teste de velocidade usando o Google PageSpeed Insights e otimize o peso das imagens da sua página de vendas.",
+        metric: "Taxa de Checkout Iniciado - Se muitas pessoas chegam ao checkout e não finalizam, sua quebra de objeções ou opções de pagamento precisam de ajuste."
     },
     whatsapp: {
         keywords: ['whatsapp', 'vender no 1 a 1', 'fechamento', 'script', 'conversa', 'zap'],
-        response: `**O WhatsApp é a maior ferramenta de fechamento do mundo. É onde o 'frio' vira 'venda'.**
-
-O erro número 1 é mandar o link de cara. O processo correto é:
-1. **Conexão**: Chame pelo nome e mostre que há um humano ali.
-2. **Diagnóstico**: Faça perguntas. Entenda o que o cliente precisa antes de oferecer.
-3. **Apresentação de Valor**: Mostre como o produto resolve a dor que ele acabou de te contar.
-4. **Quebra de Objeção**: "Tá caro", "Vou falar com minha esposa", "Não sei se funciona". Esteja pronto para cada uma delas.
-5. **Fechamento**: Use perguntas de opção dupla (Prefere pagar no boleto ou cartão?) em vez de perguntas de sim/não.`,
-        action: "Crie um script base, mas personalize os primeiros 2 minutos de conversa para cada lead que chegar.",
-        metric: "Taxa de Fechamento por Lead - Se você converte menos de 10% dos leads qualificados, sua abordagem está sendo muito passiva ou robótica."
+        definition: "Venda no WhatsApp é a estratégia de atendimento personalizado (1 a 1) focada em converter leads que ainda possuem dúvidas ou precisam de um contato humano para finalizar a compra. É a ferramenta mais poderosa para aumentar o LTV e recuperar vendas.",
+        strategy: "O processo deve seguir um fluxo de: Conexão (personalização), Diagnóstico (entender a dor), Apresentação de Valor (solução customizada) e Fechamento (condução para o pagamento). Nunca envie o link sem antes validar o interesse e tirar as dúvidas principais.",
+        action: "Desenvolva um script de 'diagnóstico' onde você faz 3 perguntas-chave para qualificar o lead antes da oferta.",
+        metric: "Taxa de Conversão por Lead - Um atendimento profissional deve converter entre 10% e 20% dos leads qualificados."
     },
     sales: {
         keywords: ['venda', 'vender', 'faturamento', 'dinheiro', 'lucro', 'vendi'],
-        response: `**Vender é um reflexo direto do valor que você gera no mercado.**
-
-Se as vendas pararam, analise o seu funil de trás para frente:
-- **Checkout**: A pessoa chegou e não comprou? Faltou confiança ou método de pagamento facilitado.
-- **Página de Vendas**: Muita gente entra e sai rápido? A promessa está fraca ou o design está amador.
-- **Tráfego**: Ninguém entra? Seu criativo ou público estão errados.
-
-No método Breno de Sena, priorizamos o **Lucro de Verdade**. Prefira vender menos com mais margem do que ter faturamento alto mas conta no vermelho.`,
-        action: "Revise seu checkout hoje. Adicione selos de segurança e garanta que o tempo de carregamento seja menor que 2 segundos.",
-        metric: "ROI (Retorno sobre Investimento) - O faturamento é ego, o lucro é felicidade. Mantenha os custos operacionais baixos."
+        definition: "No contexto digital, uma venda é o resultado da soma de uma oferta irresistível, uma audiência qualificada e um processo de convencimento eficiente. Ela representa a troca de valor entre o seu conhecimento/produto e o recurso financeiro do cliente.",
+        strategy: "Analise seu funil de trás para frente se os resultados não estiverem satisfatórios. Verifique a taxa de checkout, a retenção na página de vendas e a performance dos anúncios. Priorize sempre estratégias que garantam margem de lucro, pois faturamento sem lucro é apenas vaidade.",
+        action: "Revise seu fluxo de checkout hoje e certifique-se de que os selos de segurança e garantias estão visíveis.",
+        metric: "ROI (Retorno sobre Investimento) - Mantenha o foco na sustentabilidade financeira do seu negócio."
     }
 };
 
 export const FALLBACK_STRATEGY = {
-    response: "Para te ajudar melhor, tente ser mais específico. Estou pronto para mentorar você em estratégias de venda, anúncios e estruturação de negócio.",
-    action: "Me conte mais sobre o seu estágio atual: você já tem um produto ou está começando do zero?",
-    metric: "Mantenha o foco. O excesso de informação causa paralisia por análise."
+    response: "Para que eu possa fornecer uma orientação mais precisa, peço que detalhe melhor a sua dúvida técnica ou estratégica. Estou apto a mentorar você em pilares como Estrutura de Vendas, Copywriting, Tráfego Pago/Orgânico e Gestão de Negócios Digitais.",
+    action: "Informe em qual estágio o seu projeto se encontra: você já possui uma oferta validada ou está na fase de estruturação inicial?",
+    metric: "Mantenha a clareza nos processos. A confusão técnica é o maior impeditivo para a escala de resultados."
 };

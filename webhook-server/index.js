@@ -1,7 +1,8 @@
 const express = require('express');
-const admin = require('firebase-admin');
+const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 const { Resend } = require('resend');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -11,39 +12,20 @@ app.use(express.static('public'));
 // Log global de todas as requisições que chegam
 app.use((req, res, next) => {
     console.log(`[${new Date().toLocaleTimeString()}] 🚀 CHAMADA RECEBIDA: ${req.method} ${req.url}`);
-    console.log('Headers:', JSON.stringify(req.headers, null, 2));
     next();
 });
 
-// Configuração do Firebase Admin usando Variável de Ambiente
-// O Render permite colar o JSON inteiro na variável FIREBASE_SERVICE_ACCOUNT
-let db;
+// Configuração do Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-try {
-    const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!rawKey) {
-        throw new Error('A variável FIREBASE_SERVICE_ACCOUNT está vazia ou não foi configurada.');
-    }
-
-    // Remove possíveis espaços ou quebras de linha acidentais
-    const serviceAccount = JSON.parse(rawKey.trim());
-
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
-
-    db = admin.firestore();
-    console.log('✅ Firebase Admin inicializado com sucesso.');
-} catch (error) {
-    console.error('❌ ERRO CRÍTICO NA INICIALIZAÇÃO:');
-    console.error(error.message);
-    console.log('--------------------------------------------------');
-    console.log('DICA: Verifique se você copiou o JSON INTEIRO do arquivo.');
-    console.log('O texto deve começar com { e terminar com }');
-    console.log('--------------------------------------------------');
-    // Encerrar o processo se não conseguir conectar ao banco
+if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ ERRO CRÍTICO: SUPABASE_URL ou SUPABASE_KEY não configurados.');
     process.exit(1);
 }
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+console.log('✅ Supabase Client inicializado com sucesso.');
 
 // Inicializar Resend
 let resend;
@@ -67,40 +49,31 @@ async function sendWelcomeEmail(email, firstName, password) {
             subject: '🚀 Seu acesso à Área de Membros!',
             html: `
         <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; background-color: #ffffff; color: #333333; line-height: 1.6;">
-          
           <div style="margin-bottom: 25px;">
             <p style="font-size: 18px; margin: 0 0 15px 0;">Olá, <strong>${firstName}</strong>!</p>
             <p style="font-size: 16px; margin: 0;">Sua inscrição foi confirmada com sucesso!</p>
           </div>
-          
           <div style="background-color: #f9f9f9; border: 1px solid #eeeeee; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
             <p style="margin: 0 0 12px 0; font-size: 13px; color: #999999; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Dados de acesso:</p>
-            <p style="margin: 6px 0; font-size: 16px;"><strong>Email:</strong> <span style="color: #333 text-decoration: none;">${email}</span></p>
+            <p style="margin: 6px 0; font-size: 16px;"><strong>Email:</strong> <span style="color: #333; text-decoration: none;">${email}</span></p>
             <p style="margin: 6px 0; font-size: 16px;"><strong>Senha:</strong> <span style="color: #333;">${password}</span></p>
           </div>
-          
           <div style="text-align: center; margin-bottom: 30px;">
             <a href="https://www.caminhodigitalmaster.com" 
                style="background-color: #2ecc71; display: inline-block; padding: 18px 50px; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 20px; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);">
               Acesse aqui
             </a>
           </div>
-
           <div style="border-left: 4px solid #eeeeee; padding: 15px; background-color: #fafafa; margin-bottom: 30px; border-radius: 4px;">
             <p style="font-size: 14px; color: #555555; margin: 0;">
               <strong>ATENÇÃO:</strong> Por segurança, recomendamos que você altere sua senha imediatamente após o primeiro acesso à plataforma.
             </p>
           </div>
-          
           <div style="border-top: 1px solid #eeeeee; padding-top: 20px;">
             <p style="font-size: 16px; margin: 0;">
               Nos vemos na área de membros!!<br><br>
               <strong>Breno Sena</strong>
             </p>
-          </div>
-          
-          <div style="display: none; white-space: nowrap; font: 15px courier; line-height: 0;">
-            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
           </div>
         </div>
       `
@@ -118,16 +91,10 @@ async function sendWelcomeEmail(email, firstName, password) {
     }
 }
 
-// Rota de teste simples para ver no navegador
+// Rota de teste simples
 app.get('/', (req, res) => {
-    res.send('✅ Servidor de Webhook da Área de Membros está ONLINE e aguardando vendas!');
+    res.send('✅ Servidor de Webhook (Supabase) está ONLINE e aguardando vendas!');
 });
-
-app.get('/webhook', (req, res) => {
-    res.send('Opa! Esta rota existe, mas ela só aceita envios do tipo POST (que é o que a Kiwify manda). Mas o sinal está chegando aqui!');
-});
-
-const crypto = require('crypto');
 
 // Função de Hash idêntica ao Frontend
 function hashPassword(password) {
@@ -138,11 +105,8 @@ function hashPassword(password) {
 // Rota para o Webhook
 app.post('/webhook', async (req, res) => {
     console.log('--- NOVO WEBHOOK RECEBIDO ---');
-    console.log('Payload:', JSON.stringify(req.body, null, 2));
+    const { order_status, Customer, customer, webhook_event_type } = req.body;
 
-    const { order_status, customer, Customer } = req.body;
-
-    // A Kiwify envia os dados do cliente dentro do objeto "Customer" (com 'C' maiúsculo)
     const clienteDados = Customer || customer;
 
     if (!clienteDados || !clienteDados.email) {
@@ -154,88 +118,74 @@ app.post('/webhook', async (req, res) => {
     const firstName = clienteDados.first_name || fullName.split(' ')[0];
     const status = order_status;
 
-    console.log(`📩 Recebido webhook para ${email}. Status: ${status}`);
+    console.log(`📩 Processando ${email}. Status: ${status}`);
 
     try {
-        const studentsRef = db.collection('students');
-        const snapshot = await studentsRef.where('email', '==', email).get();
-
         const tempPassword = "aluno123";
         const hashedPassword = hashPassword(tempPassword);
+        const now = new Date().toISOString();
 
-        // CASO 1: Venda Aprovada (Paid ou Approved)
+        // 1. Verificar se o aluno já existe
+        const { data: existingStudent, error: fetchError } = await supabase
+            .from('students')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        // CASO 1: Venda Aprovada
         if (status === 'paid' || status === 'approved') {
-            const now = new Date().toISOString();
-            if (snapshot.empty) {
-                // Criar novo aluno
-                await studentsRef.add({
-                    name: fullName,
-                    email: email,
-                    status: 'approved',
-                    progress: 0,
-                    created_at: now,
-                    lastAccess: now,
-                    purchase_at: now,
-                    approved_at: now,
-                    password_hash: hashedPassword // Senha Hasheada
-                });
-                console.log(`✅ Novo aluno criado e aprovado: ${email}`);
-
-                // Enviar email de boas-vindas
+            if (!existingStudent) {
+                const { error: insertError } = await supabase
+                    .from('students')
+                    .insert({
+                        name: fullName,
+                        email: email,
+                        status: 'approved',
+                        progress: 0,
+                        lastAccess: now,
+                        password_hash: hashedPassword
+                    });
+                if (insertError) throw insertError;
+                console.log(`✅ Novo aluno criado: ${email}`);
                 await sendWelcomeEmail(email, firstName, tempPassword);
             } else {
-                // Aluno já existe (pode estar Rejected por reembolso)
-                const docRef = snapshot.docs[0].ref;
-                await docRef.update({
-                    status: 'approved',
-                    name: fullName, // Garantir que o nome está atualizado
-                    password_hash: hashedPassword, // Resetar para a senha padrão hasheada
-                    lastAccess: now,
-                    purchase_at: now,
-                    approved_at: now
-                });
-                console.log(`✅ Aluno existente reativado: ${email}`);
-
-                // Enviar email novamente para o aluno saber que recuperou o acesso
+                const { error: updateError } = await supabase
+                    .from('students')
+                    .update({
+                        status: 'approved',
+                        name: fullName,
+                        password_hash: hashedPassword,
+                        lastAccess: now
+                    })
+                    .eq('id', existingStudent.id);
+                if (updateError) throw updateError;
+                console.log(`✅ Aluno reativado: ${email}`);
                 await sendWelcomeEmail(email, firstName, tempPassword);
             }
         }
 
-        // CASO 2: Reembolso, Chargeback ou Cancelamento
-        const eventType = req.body.webhook_event_type;
-        const isRefund = status === 'refunded' ||
-            status === 'chargeback' ||
-            status === 'canceled' ||
-            eventType === 'order_refunded' ||
-            eventType === 'order_canceled';
+        // CASO 2: Cancelamento/Reembolso
+        const isRefund = ['refunded', 'chargeback', 'canceled'].includes(status) || 
+                         ['order_refunded', 'order_canceled'].includes(webhook_event_type);
 
-        if (isRefund) {
-            console.log(`🚨 PROCESSANDO REEMBOLSO/CANCELAMENTO para: ${email}`);
-            console.log(`DADOS: Status=${status}, Evento=${eventType}`);
-
-            if (!snapshot.empty) {
-                const now = new Date().toISOString();
-                await snapshot.docs[0].ref.update({
-                    status: 'rejected',
-                    cancel_at: now
-                });
-                console.log(`❌ SUCESSO: Acesso bloqueado para ${email}`);
-            } else {
-                console.log(`❌ FALHA: Recebi reembolso para ${email}, mas o aluno não existe no banco.`);
-            }
-        }
-        else if (status !== 'paid' && status !== 'approved') {
-            console.log(`❓ STATUS NÃO MAPEADO RECEBIDO: email=${email}, status=${status}, eventType=${eventType}`);
+        if (isRefund && existingStudent) {
+            const { error: refundError } = await supabase
+                .from('students')
+                .update({ status: 'rejected' })
+                .eq('id', existingStudent.id);
+            if (refundError) throw refundError;
+            console.log(`❌ Acesso bloqueado para: ${email}`);
         }
 
-        // Responder sempre 200 OK o mais rápido possível para a Kiwify
-        return res.status(200).send({ status: 'success', message: 'Webhook received' });
+        return res.status(200).send({ status: 'success' });
     } catch (error) {
-        console.error('❌ Erro interno ao processar webhook:', error);
-        // Mesmo em erro, retornamos 200 para a Kiwify não ficar tentando reenviar se o erro for de lógica
+        console.error('❌ Erro processando webhook:', error.message);
         return res.status(200).send({ status: 'error', message: error.message });
     }
 });
+
 
 // Porta padrão do Render ou 10000 local
 const PORT = process.env.PORT || 10000;
