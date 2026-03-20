@@ -242,17 +242,23 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                     <div className="text-center mb-6 sm:mb-8">
                         <h1 className="text-xl sm:text-2xl font-bold text-white mb-1.5 sm:mb-2 tracking-tight">
                             {isForgotPassword ? (
-                                <span className="text-gold-gradient">Redefinir Senha</span>
+                                resetStep === 2 ? (
+                                    <span className="text-gold-gradient">Criar Nova Senha</span>
+                                ) : (
+                                    <span className="text-gold-gradient">Redefinir Senha</span>
+                                )
                             ) : (
                                 <>Área de <span className="text-gold-gradient">Membros</span></>
                             )}
                         </h1>
-                        <p className="text-white/40 text-sm">
-                            {isForgotPassword
-                                ? (resetStep === 1 ? 'Digite seu email para continuar' : 'Crie sua nova senha')
-                                : (isLogin ? 'Acesse seus cursos e ferramentas' : 'Solicite seu acesso')
-                            }
-                        </p>
+                        {!(isForgotPassword && resetStep === 2) && (
+                            <p className="text-white/40 text-sm">
+                                {isForgotPassword
+                                    ? 'Digite seu email para continuar'
+                                    : (isLogin ? 'Acesse seus cursos e ferramentas' : 'Solicite seu acesso')
+                                }
+                            </p>
+                        )}
                     </div>
 
                     {/* Message */}
