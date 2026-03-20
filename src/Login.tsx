@@ -242,7 +242,7 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                     <div className="text-center mb-6 sm:mb-8">
                         <h1 className="text-xl sm:text-2xl font-bold text-white mb-1.5 sm:mb-2 tracking-tight">
                             {isForgotPassword ? (
-                                <span className="text-gold-gradient">Recuperar Senha</span>
+                                <span className="text-gold-gradient">Redefinir Senha</span>
                             ) : (
                                 <>Área de <span className="text-gold-gradient">Membros</span></>
                             )}
