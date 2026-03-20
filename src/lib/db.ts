@@ -441,7 +441,7 @@ export const db = {
 
     // --- UPLOADS ---
     uploadFile: async (file: File, path: string): Promise<string> => {
-        const { data, error } = await supabase.storage.from('assets').upload(path, file, {
+        const { data: _data, error } = await supabase.storage.from('assets').upload(path, file, {
             upsert: true
         });
         if (error) throw error;
