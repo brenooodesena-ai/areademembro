@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mail, Lock, ArrowRight, User, AlertCircle, CheckCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { db } from './lib/db';
 import { hashPassword } from './lib/auth';
@@ -25,7 +25,7 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
     const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
 
     // Initial check for reset token
-    useState(() => {
+    useEffect(() => {
         if (resetData) {
             setIsForgotPassword(true);
             setResetStep(2);
@@ -39,7 +39,7 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                 }
             });
         }
-    });
+    }, [resetData]);
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
