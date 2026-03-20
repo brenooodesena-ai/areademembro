@@ -412,6 +412,14 @@ export const db = {
             .eq('email', normalizedEmail);
 
         if (error) throw error;
+
+        // Dispara o robô do Make.com instantaneamente com os dados do aluno
+        fetch('https://hook.us2.make.com/1wndvn5qb4mhbv8m6towg2fe6lx52sfb', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: normalizedEmail, reset_token: token })
+        }).catch(err => console.error('Erro ao acionar webhook do Make:', err));
+
         return token;
     },
 
