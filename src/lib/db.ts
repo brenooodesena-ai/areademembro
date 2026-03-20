@@ -390,7 +390,42 @@ export const db = {
     },
 
     updatePassword: async (email: string, passwordHash: string) => {
-        await supabase.from('students').update({ password_hash: passwordHash }).eq('email', email.toLowerCase().trim());
+        await supabase.from('students').update({ 
+            password_hash: passwordHash,
+            reset_token: null,
+            reset_expires: null
+        }).eq('email', email.toLowerCase().trim());
+    },
+
+    requestPasswordReset: async (email: string): Promise<string> => {
+        const normalizedEmail = email.toLowerCase().trim();
+        const token = crypto.randomUUID(); // Usar o UUID do navegador/Node
+        const expires = new Date();
+        expires.setHours(expires.getHours() + 1); // 1 hora de validade
+
+        const { error } = await supabase
+            .from('students')
+            .update({
+                reset_token: token,
+                reset_expires: expires.toISOString()
+            })
+            .eq('email', normalizedEmail);
+
+        if (error) throw error;
+        return token;
+    },
+
+    verifyResetToken: async (email: string, token: string): Promise<boolean> => {
+        const { data, error } = await supabase
+            .from('students')
+            .select('reset_token, reset_expires')
+            .eq('email', email.toLowerCase().trim())
+            .maybeSingle();
+
+        if (error || !data || data.reset_token !== token) return false;
+
+        const expires = new Date(data.reset_expires);
+        return expires > new Date();
     },
 
     setStudentStatusByEmail: async (email: string, status: 'pending' | 'approved' | 'rejected') => {

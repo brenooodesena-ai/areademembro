@@ -29,6 +29,7 @@ async function migrate() {
     // 1. Migrar Módulos
     console.log('📦 Migrando Módulos...');
     const modulesSnap = await getDocs(collection(firestore, 'modules'));
+    console.log(`found ${modulesSnap.size} modules in Firebase`);
     for (const doc of modulesSnap.docs) {
         const data = doc.data();
         const { error } = await supabase.from('modules').upsert({
@@ -45,6 +46,7 @@ async function migrate() {
     // 2. Migrar Aulas
     console.log('📖 Migrando Aulas...');
     const lessonsSnap = await getDocs(collection(firestore, 'lessons'));
+    console.log(`found ${lessonsSnap.size} lessons in Firebase`);
     for (const doc of lessonsSnap.docs) {
         const data = doc.data();
         const { error } = await supabase.from('lessons').upsert({
@@ -68,6 +70,7 @@ async function migrate() {
     // 3. Migrar Alunos
     console.log('👨‍🎓 Migrando Alunos...');
     const studentsSnap = await getDocs(collection(firestore, 'students'));
+    console.log(`found ${studentsSnap.size} students in Firebase`);
     for (const doc of studentsSnap.docs) {
         const data = doc.data();
         const { error } = await supabase.from('students').upsert({

@@ -11,6 +11,7 @@ function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [studentEmail, setStudentEmail] = useState<string>('');
+  const [resetData, setResetData] = useState<{ email: string, token: string } | null>(null);
 
   // Data State with Caching
   const [bannerConfig, setBannerConfig] = useState<BannerConfig>(() => {
@@ -83,6 +84,17 @@ function App() {
 
     // Safety check: Cleanup duplicate admins
     db.cleanupDuplicateAdmins().catch(err => console.error("Error cleaning admins:", err));
+
+    // Detect Password Reset Token
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const email = params.get('email');
+    if (token && email) {
+      setResetData({ token, email });
+      setView('login');
+      // Clear URL params without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   // Save banner config to DB when it changes (from Admin panel)
@@ -126,7 +138,7 @@ function App() {
 
   return (
     <>
-      {view === 'login' && <Login onLogin={handleLogin} />}
+      {view === 'login' && <Login onLogin={handleLogin} resetData={resetData} onClearReset={() => setResetData(null)} />}
 
       {view === 'dashboard' && (
         <Dashboard

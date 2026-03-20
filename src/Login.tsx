@@ -5,9 +5,11 @@ import { hashPassword } from './lib/auth';
 
 interface LoginProps {
     onLogin: (isAdmin: boolean, studentEmail: string) => void;
+    resetData?: { email: string, token: string } | null;
+    onClearReset?: () => void;
 }
 
-export function Login({ onLogin }: LoginProps) {
+export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
     const [isLogin, setIsLogin] = useState(true);
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -20,6 +22,24 @@ export function Login({ onLogin }: LoginProps) {
     const [isForgotPassword, setIsForgotPassword] = useState(false);
     const [resetStep, setResetStep] = useState(1); // 1: Email, 2: New Password
     const [resetEmail, setResetEmail] = useState("");
+    const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
+
+    // Initial check for reset token
+    useState(() => {
+        if (resetData) {
+            setIsForgotPassword(true);
+            setResetStep(2);
+            setResetEmail(resetData.email);
+            
+            // Verify token immediately
+            db.verifyResetToken(resetData.email, resetData.token).then(valid => {
+                setIsTokenValid(valid);
+                if (!valid) {
+                    setMessage({ type: 'error', text: 'O link de recuperação expirou ou é inválido.' });
+                }
+            });
+        }
+    });
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,7 +48,7 @@ export function Login({ onLogin }: LoginProps) {
 
         try {
             if (resetStep === 1) {
-                // Verify email
+                // Step 1: Request Reset
                 if (!resetEmail.trim()) {
                     setMessage({ type: 'error', text: 'Digite seu email.' });
                     return;
@@ -36,21 +56,35 @@ export function Login({ onLogin }: LoginProps) {
 
                 const exists = await db.checkEmailExists(resetEmail.trim());
                 if (!exists) {
-                    setMessage({ type: 'error', text: 'Email não encontrado. (Verifique se digitou corretamente ou contate o suporte)' });
-                    console.log(`Debug: Email ${resetEmail} check failed.`);
+                    setMessage({ type: 'error', text: 'Email não encontrado.' });
                     return;
                 }
 
-                setResetStep(2);
-                setMessage({ type: 'success', text: 'Email verificado! Crie sua nova senha.' });
+                // Call Supabase request
+                await db.requestPasswordReset(resetEmail.trim());
+                
+                setMessage({ 
+                    type: 'success', 
+                    text: 'Solicitado! Sua automação enviará o link em instantes.' 
+                });
+                
+                // Stay in step 1 or show a specialized success view
             } else {
-                // Update password
+                // Step 2: Confirm Reset (via Token)
                 if (!password.trim() || password.length < 6) {
                     setMessage({ type: 'error', text: 'A senha deve ter no mínimo 6 caracteres.' });
                     return;
                 }
 
+                if (isTokenValid === false) {
+                    setMessage({ type: 'error', text: 'Link inválido ou expirado. Peça um novo.' });
+                    return;
+                }
+
                 const passwordHash = await hashPassword(password);
+                
+                // Se chegamos aqui via link direto (resetData), podemos usar o updatePassword
+                // O updatePassword já limpa o token no banco.
                 await db.updatePassword(resetEmail.trim(), passwordHash);
 
                 setMessage({ type: 'success', text: 'Senha alterada com sucesso! Faça login.' });
@@ -61,6 +95,7 @@ export function Login({ onLogin }: LoginProps) {
                     setPassword("");
                     setResetEmail("");
                     setMessage(null);
+                    if (onClearReset) onClearReset();
                 }, 2000);
             }
         } catch (error) {
@@ -346,6 +381,7 @@ export function Login({ onLogin }: LoginProps) {
                                     setResetStep(1);
                                     setMessage(null);
                                     setPassword("");
+                                    if (onClearReset) onClearReset();
                                 }}
                                 className="w-full py-2 text-sm text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2 cursor-pointer"
                             >
