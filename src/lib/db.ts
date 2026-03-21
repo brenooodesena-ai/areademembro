@@ -364,7 +364,9 @@ export const db = {
                 status: 'approved',
                 approved_at: now,
                 approved_by: adminId || 'admin',
-                purchase_at: now
+                purchase_at: now,
+                access_type: 'annual',
+                expiry_at: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString()
             })
             .eq('id', studentId);
     },
