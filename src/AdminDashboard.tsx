@@ -1059,7 +1059,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-bold text-white">{student.name || "Sem Nome"}</h4>
                                                         {student.email?.toLowerCase() === 'brenooodesena@gmail.com' && (
-                                                            <span className="bg-red-500/20 text-red-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-red-500/20">
+                                                            <span className="bg-blue-500/20 text-blue-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-500/20">
                                                                 ADMINISTRADOR
                                                             </span>
                                                         )}
