@@ -44,20 +44,31 @@ Deno.serve(async (req) => {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const passwordHash = await hashPassword(DEFAULT_PASSWORD);
 
-        // UPSERT STUDENT
-        await supabase.from('students').upsert({
-            email: email.toLowerCase().trim(),
-            name: name,
-            password_hash: passwordHash,
-            status: 'approved',
-            approved_at: new Date().toISOString()
-        }, { onConflict: 'email' });
+        // 1. VERIFICAR SE O ALUNO JÁ EXISTE
+        const { data: existingStudent } = await supabase
+            .from('students')
+            .select('*')
+            .eq('email', email.toLowerCase().trim())
+            .maybeSingle();
 
-        // SEND EMAIL
+        const isNewStudent = !existingStudent;
+
+        // 2. SE FOR ALUNO NOVO, CRIA COM SENHA PADRÃO. SE JÁ EXISTIR, NÃO MEXE NA SENHA.
+        if (isNewStudent) {
+            await supabase.from('students').insert({
+                email: email.toLowerCase().trim(),
+                name: name,
+                password_hash: passwordHash,
+                status: 'approved',
+                approved_at: new Date().toISOString()
+            });
+        }
+
+        // SEND EMAIL ONLY FOR NEW STUDENTS
         let deliveryStatus = "Pendente";
         let fullError = null;
 
-        if (resendKey) {
+        if (resendKey && isNewStudent) {
             const res = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {

@@ -159,8 +159,8 @@ app.post('/webhook', async (req, res) => {
                         expiry_at: expiryAt
                     });
                 if (insertError) throw insertError;
-                console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
                 await sendWelcomeEmail(email, firstName, tempPassword);
+                console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
             } else {
                 const { error: updateError } = await supabase
                     .from('students')
@@ -174,8 +174,9 @@ app.post('/webhook', async (req, res) => {
                     })
                     .eq('id', existingStudent.id);
                 if (updateError) throw updateError;
-                console.log(`✅ Aluno reativado (${accessType}): ${email}`);
-                await sendWelcomeEmail(email, firstName, tempPassword);
+                console.log(`✅ Aluno atualizado (${accessType}): ${email}`);
+                // Não enviamos email de boas-vindas para atualizações de alunos existentes
+                // para evitar SPAM quando o admin altera o tipo de acesso no painel.
             }
         }
 
