@@ -487,7 +487,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                         onClick={() => setActiveTab('approvals')}
                         className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm whitespace-nowrap ${activeTab === 'approvals' ? 'bg-gold-500 text-black font-bold shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                     >
-                        <ShieldCheck size={16} /> Liberação
+                        <ShieldCheck size={16} /> Liberação e Alunos
                     </button>
                 </nav>
             </div>
@@ -1020,7 +1020,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                     <div className="max-w-6xl space-y-8">
                         {/* Header */}
                         <div className="flex items-center gap-8 mb-8">
-                            <h2 className="text-3xl font-bold text-white">Liberação de Acessos</h2>
+                            <h2 className="text-3xl font-bold text-white">Liberação e Alunos</h2>
                             <div className="bg-black border border-white/10 rounded-xl px-6 py-3 flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
                                     <ShieldCheck size={24} />
@@ -1070,8 +1070,29 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                         {(student.name || student.email || "Aluno").split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold text-white text-lg leading-tight">{student.name || "Sem Nome"}</h4>
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="font-bold text-white text-lg leading-tight">{student.name || "Sem Nome"}</h4>
+                                                            <button 
+                                                                onClick={async () => {
+                                                                    const newType = student.access_type === 'lifetime' ? 'annual' : 'lifetime';
+                                                                    if (confirm(`Deseja alterar o acesso de ${student.name} para ${newType === 'lifetime' ? 'VITALÍCIO' : 'ANUAL'}?`)) {
+                                                                        await db.updateAccessType(student.id, newType);
+                                                                        const updated = await db.getStudents();
+                                                                        setStudentsData(updated);
+                                                                    }
+                                                                }}
+                                                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                                                                    student.access_type === 'lifetime' 
+                                                                    ? 'bg-gold-500/20 text-gold-500 border border-gold-500/20 hover:bg-gold-500/30' 
+                                                                    : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
+                                                                }`}
+                                                                title="Clique para alternar o tipo de acesso"
+                                                            >
+                                                                {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
+                                                            </button>
+                                                        </div>
                                                         <p className="text-sm text-white/60">{student.email || "Sem Email"}</p>
+
                                                         <p className="text-xs text-white/30 mt-1">
                                                             Cadastrado em: {student.created_at ? new Date(student.created_at).toLocaleString('pt-BR', {
                                                                 day: '2-digit',
@@ -1152,13 +1173,24 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-bold text-white">{student.name || "Sem Nome"}</h4>
-                                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                                                            student.access_type === 'lifetime' 
-                                                            ? 'bg-gold-500/20 text-gold-500 border border-gold-500/20' 
-                                                            : 'bg-white/5 text-white/40 border border-white/10'
-                                                        }`}>
+                                                        <button 
+                                                            onClick={async () => {
+                                                                const newType = student.access_type === 'lifetime' ? 'annual' : 'lifetime';
+                                                                if (confirm(`Deseja alterar o acesso de ${student.name} para ${newType === 'lifetime' ? 'VITALÍCIO' : 'ANUAL'}?`)) {
+                                                                    await db.updateAccessType(student.id, newType);
+                                                                    const updated = await db.getStudents();
+                                                                    setStudentsData(updated);
+                                                                }
+                                                            }}
+                                                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                                                                student.access_type === 'lifetime' 
+                                                                ? 'bg-gold-500/20 text-gold-500 border border-gold-500/20 hover:bg-gold-500/30' 
+                                                                : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
+                                                            }`}
+                                                            title="Clique para alternar o tipo de acesso"
+                                                        >
                                                             {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
-                                                        </span>
+                                                        </button>
                                                     </div>
                                                     <p className="text-xs text-white/40">{student.email || "Sem Email"}</p>
                                                     {student.access_type === 'annual' && student.expiry_at && (

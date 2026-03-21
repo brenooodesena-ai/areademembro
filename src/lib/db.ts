@@ -452,6 +452,20 @@ export const db = {
             .update({ progress: Math.min(100, Math.max(0, progress)) })
             .eq('id', studentId);
     },
+    
+    updateAccessType: async (studentId: string, type: 'annual' | 'lifetime') => {
+        const now = new Date();
+        const oneYearLater = new Date(now.setFullYear(now.getFullYear() + 1)).toISOString();
+        
+        await supabase
+            .from('students')
+            .update({
+                access_type: type,
+                expiry_at: type === 'lifetime' ? null : oneYearLater
+            })
+            .eq('id', studentId);
+    },
+
 
     getHeatmapData: async () => {
         const { data, error } = await supabase.from('access_logs').select('access_time');
