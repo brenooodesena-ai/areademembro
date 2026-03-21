@@ -215,9 +215,11 @@ export const db = {
 
         const now = new Date().toISOString();
         if (!existing) {
+            const studentId = Math.random().toString(36).substring(2, 11);
             const { data, error } = await supabase
                 .from('students')
                 .insert({
+                    id: studentId,
                     name,
                     email: normalizedEmail,
                     status: 'pending',
@@ -276,9 +278,11 @@ export const db = {
     registerStudent: async (name: string, email: string, passwordHash: string, status: 'pending' | 'approved' = 'pending') => {
         const normalizedEmail = email.toLowerCase().trim();
         const now = new Date().toISOString();
+        const studentId = Math.random().toString(36).substring(2, 11);
         const { data, error } = await supabase
             .from('students')
             .insert({
+                id: studentId,
                 name,
                 email: normalizedEmail,
                 password_hash: passwordHash,
@@ -351,7 +355,12 @@ export const db = {
 
         const now = new Date().toISOString();
         await supabase.from('access_logs').insert({ student_id: student.id, access_time: now });
-        await supabase.from('students').update({ lastAccess: now }).eq('id', student.id);
+        // Limpar reset_token no login para não acionar o Make.com indevidamente
+        await supabase.from('students').update({ 
+            lastAccess: now,
+            reset_token: null,
+            reset_expires: null
+        }).eq('id', student.id);
 
         return student;
     },
@@ -383,7 +392,12 @@ export const db = {
     },
 
     updateStudentName: async (email: string, newName: string) => {
-        await supabase.from('students').update({ name: newName }).eq('email', email.toLowerCase().trim());
+        // Limpar reset_token ao salvar perfil para não acionar o Make.com
+        await supabase.from('students').update({ 
+            name: newName,
+            reset_token: null,
+            reset_expires: null
+        }).eq('email', email.toLowerCase().trim());
     },
 
     updateStudentImage: async (email: string, image: string | null) => {
@@ -453,15 +467,25 @@ export const db = {
             .eq('id', studentId);
     },
     
-    updateAccessType: async (studentId: string, type: 'annual' | 'lifetime') => {
-        const now = new Date();
-        const oneYearLater = new Date(now.setFullYear(now.getFullYear() + 1)).toISOString();
+    updateAccessType: async (studentId: string, type: 'annual' | 'lifetime', purchaseAt?: string) => {
+        // For annual, always calculate expiry based on original purchase date, never today
+        let expiry: string | null = null;
+        if (type === 'annual' && purchaseAt) {
+            const base = new Date(purchaseAt);
+            base.setFullYear(base.getFullYear() + 1);
+            expiry = base.toISOString();
+        } else if (type === 'annual') {
+            // Fallback if no purchase date: use today
+            const now = new Date();
+            now.setFullYear(now.getFullYear() + 1);
+            expiry = now.toISOString();
+        }
         
         await supabase
             .from('students')
             .update({
                 access_type: type,
-                expiry_at: type === 'lifetime' ? null : oneYearLater
+                expiry_at: type === 'lifetime' ? null : expiry
             })
             .eq('id', studentId);
     },

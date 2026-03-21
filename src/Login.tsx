@@ -63,7 +63,7 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                 
                 setMessage({ 
                     type: 'success', 
-                    text: 'Solicitado! Sua automação enviará o link em instantes.' 
+                    text: 'Solicitado! Verifique seu e-mail e siga o link para redefinir sua senha.' 
                 });
             } else {
                 // Step 2: Confirm Reset (via Token)

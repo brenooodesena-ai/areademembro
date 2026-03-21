@@ -1063,11 +1063,14 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                                 ADMINISTRADOR
                                                             </span>
                                                         )}
+                                                        {student.email?.toLowerCase() === 'brenooodesena@gmail.com' ? (
+                                                            <span className="bg-gold-500/20 text-gold-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-gold-500/20 cursor-default" title="Acesso permanente — não pode ser alterado">✨ Vitalício</span>
+                                                        ) : (
                                                         <button 
                                                             onClick={async () => {
                                                                 const newType = student.access_type === 'lifetime' ? 'annual' : 'lifetime';
                                                                 if (confirm(`Deseja alterar o acesso de ${student.name} para ${newType === 'lifetime' ? 'VITALÍCIO' : 'ANUAL'}?`)) {
-                                                                    await db.updateAccessType(student.id, newType);
+                                                                    await db.updateAccessType(student.id, newType, student.purchase_at);
                                                                     const updated = await db.getStudents();
                                                                     setStudentsData(updated);
                                                                 }
@@ -1081,6 +1084,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                         >
                                                             {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
                                                         </button>
+                                                        )}
                                                     </div>
                                                     <p className="text-xs text-white/40">{student.email || "Sem Email"}</p>
                                                     {student.access_type === 'annual' && student.expiry_at && (

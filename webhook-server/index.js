@@ -91,6 +91,61 @@ async function sendWelcomeEmail(email, firstName, password) {
     }
 }
 
+// Função para enviar email de atualização (Aluno Existente)
+async function sendUpgradeEmail(email, firstName) {
+    if (!resend) {
+        console.error('❌ Abortando envio de e-mail: Resend não inicializado.');
+        return false;
+    }
+    try {
+        const { data, error } = await resend.emails.send({
+            from: 'Caminho Digital Master <suporte@caminhodigitalmaster.com>',
+            to: email,
+            subject: '🚀 Seu acesso foi atualizado!',
+            html: `
+        <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; background-color: #ffffff; color: #333333; line-height: 1.6;">
+          <div style="margin-bottom: 25px;">
+            <p style="font-size: 18px; margin: 0 0 15px 0;">Olá, <strong>${firstName}</strong>!</p>
+            <p style="font-size: 16px; margin: 0;">Recebemos a confirmação da sua nova compra. Seu acesso à Área de Membros foi atualizado com sucesso!</p>
+          </div>
+          <div style="background-color: #f9f9f9; border: 1px solid #eeeeee; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #999999; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Como acessar:</p>
+            <p style="margin: 6px 0; font-size: 16px;">Você já possui um cadastro ativo conosco.</p>
+            <p style="margin: 6px 0; font-size: 16px;">Basta fazer login usando o seu e-mail: <strong style="color: #333;">${email}</strong> e a sua <strong>senha atual</strong>.</p>
+          </div>
+          <div style="text-align: center; margin-bottom: 30px;">
+            <a href="https://www.caminhodigitalmaster.com" 
+               style="background-color: #2ecc71; display: inline-block; padding: 18px 50px; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 20px; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);">
+              Acesse agora
+            </a>
+          </div>
+          <div style="border-left: 4px solid #eeeeee; padding: 15px; background-color: #fafafa; margin-bottom: 30px; border-radius: 4px;">
+            <p style="font-size: 14px; color: #555555; margin: 0;">
+              <strong>Esqueceu sua senha?</strong> Não tem problema! Na tela de login, basta clicar em "Redefinir Senha".
+            </p>
+          </div>
+          <div style="border-top: 1px solid #eeeeee; padding-top: 20px;">
+            <p style="font-size: 16px; margin: 0;">
+              Nos vemos na área de membros!!<br><br>
+              <strong>Breno Sena</strong>
+            </p>
+          </div>
+        </div>
+      `
+        });
+
+        if (error) {
+            console.error('❌ Erro no Resend (Upgrade):', error);
+            return false;
+        }
+        console.log('📧 Email de atualização enviado com sucesso para:', email);
+        return true;
+    } catch (err) {
+        console.error('❌ Erro ao enviar email de atualização:', err);
+        return false;
+    }
+}
+
 // Rota de teste simples
 app.get('/', (req, res) => {
     res.send('✅ Servidor de Webhook (Supabase) está ONLINE e aguardando vendas!');
@@ -159,9 +214,11 @@ app.post('/webhook', async (req, res) => {
         // CASO 1: Venda Aprovada
         if (status === 'paid' || status === 'approved') {
             if (!existingStudent) {
+                const studentId = Math.random().toString(36).substring(2, 11);
                 const { error: insertError } = await supabase
                     .from('students')
                     .insert({
+                        id: studentId,
                         name: fullName,
                         email: email,
                         status: 'approved',
@@ -180,7 +237,7 @@ app.post('/webhook', async (req, res) => {
                     .update({
                         status: 'approved',
                         name: fullName,
-                        password_hash: hashedPassword,
+                        // password_hash NÃO é atualizado para não apagar a senha existente do aluno
                         lastAccess: now,
                         access_type: accessType,
                         expiry_at: expiryAt
@@ -188,8 +245,9 @@ app.post('/webhook', async (req, res) => {
                     .eq('id', existingStudent.id);
                 if (updateError) throw updateError;
                 console.log(`✅ Aluno atualizado (${accessType}): ${email}`);
-                // Não enviamos email de boas-vindas para atualizações de alunos existentes
-                // para evitar SPAM quando o admin altera o tipo de acesso no painel.
+                
+                // Enviar email de 'Renovação/Atualização' em vez de Boas-Vindas
+                await sendUpgradeEmail(email, firstName);
             }
         }
 
