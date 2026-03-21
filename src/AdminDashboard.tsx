@@ -1021,25 +1021,20 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                         {/* Header */}
                         <div className="flex items-center gap-8 mb-8">
                             <h2 className="text-3xl font-bold text-white">Liberação e Alunos</h2>
-                            <div className="bg-black border border-white/10 rounded-xl px-6 py-3 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                    <ShieldCheck size={24} />
-                                </div>
-                                <div>
-                                    <p className="text-white/40 text-xs uppercase font-bold">Pendentes</p>
-                                    <p className="text-2xl font-bold text-white">
-                                        {studentsData.filter(s => s.status === 'pending').length}
-                                    </p>
-                                </div>
-                            </div>
+                            <button
+                                onClick={() => setIsAddStudentModalOpen(true)}
+                                className="bg-gold-500 text-black px-6 py-2.5 rounded-xl font-bold hover:bg-gold-400 transition-all flex items-center gap-2 shadow-lg shadow-gold-500/20"
+                            >
+                                <Plus size={18} /> Novo Aluno
+                            </button>
                         </div>
 
-                        {/* Pending Students List */}
+
                         <div className="bg-black border border-white/10 rounded-2xl p-6">
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h3 className="text-xl font-bold text-white">Aguardando Aprovação</h3>
-                                    <p className="text-white/40 text-sm">Aprove ou rejeite os cadastros abaixo</p>
+                                    <h3 className="text-xl font-bold text-white">Alunos Ativos</h3>
+                                    <p className="text-white/40 text-sm">Gerencie o acesso e perfil de todos os alunos</p>
                                 </div>
                                 <button
                                     onClick={refreshStudents}
@@ -1051,117 +1046,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                     </div>
                                     {isRefreshing ? 'Atualizando...' : 'Atualizar'}
                                 </button>
-                                <button
-                                    onClick={() => setIsAddStudentModalOpen(true)}
-                                    className="text-sm bg-gold-500 text-black px-4 py-2 rounded-lg font-bold hover:bg-gold-400 transition-colors flex items-center gap-2"
-                                >
-                                    <Plus size={14} /> Novo Aluno
-                                </button>
                             </div>
-
-                            <div className="space-y-4">
-                                {studentsData.filter(s => s.status === 'pending').length > 0 ? (
-                                    studentsData.filter(s => s.status === 'pending').map((student) => (
-                                        <div key={student.id} className="bg-white/5 border border-white/5 rounded-xl p-5 hover:border-white/20 transition-colors">
-                                            <div className="flex flex-col md:flex-row md:items-center gap-6">
-                                                {/* Student Info */}
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm uppercase">
-                                                        {(student.name || student.email || "Aluno").split(' ').map(n => n[0]).join('').substring(0, 2)}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="font-bold text-white text-lg leading-tight">{student.name || "Sem Nome"}</h4>
-                                                            <button 
-                                                                onClick={async () => {
-                                                                    const newType = student.access_type === 'lifetime' ? 'annual' : 'lifetime';
-                                                                    if (confirm(`Deseja alterar o acesso de ${student.name} para ${newType === 'lifetime' ? 'VITALÍCIO' : 'ANUAL'}?`)) {
-                                                                        await db.updateAccessType(student.id, newType);
-                                                                        const updated = await db.getStudents();
-                                                                        setStudentsData(updated);
-                                                                    }
-                                                                }}
-                                                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer ${
-                                                                    student.access_type === 'lifetime' 
-                                                                    ? 'bg-gold-500/20 text-gold-500 border border-gold-500/20 hover:bg-gold-500/30' 
-                                                                    : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
-                                                                }`}
-                                                                title="Clique para alternar o tipo de acesso"
-                                                            >
-                                                                {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
-                                                            </button>
-                                                        </div>
-                                                        <p className="text-sm text-white/60">{student.email || "Sem Email"}</p>
-
-                                                        <p className="text-xs text-white/30 mt-1">
-                                                            Cadastrado em: {student.created_at ? new Date(student.created_at).toLocaleString('pt-BR', {
-                                                                day: '2-digit',
-                                                                month: '2-digit',
-                                                                year: 'numeric',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            }) : 'Data não disponível'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Action Buttons */}
-                                                <div className="flex gap-3">
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                await db.approveStudent(student.id);
-                                                                // Reload students
-                                                                const updated = await db.getStudents();
-                                                                setStudentsData(updated);
-                                                                alert(`✅ ${student.name} foi aprovado com sucesso!`);
-                                                            } catch (error) {
-                                                                console.error('Error approving student:', error);
-                                                                alert('Erro ao aprovar aluno.');
-                                                            }
-                                                        }}
-                                                        className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                                                    >
-                                                        <ShieldCheck size={18} />
-                                                        Aprovar
-                                                    </button>
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (confirm(`Tem certeza que deseja rejeitar ${student.name}?`)) {
-                                                                try {
-                                                                    await db.rejectStudent(student.id);
-                                                                    // Reload students
-                                                                    const updated = await db.getStudents();
-                                                                    setStudentsData(updated);
-                                                                    alert(`❌ ${student.name} foi rejeitado.`);
-                                                                } catch (error) {
-                                                                    console.error('Error rejecting student:', error);
-                                                                    alert('Erro ao rejeitar aluno.');
-                                                                }
-                                                            }
-                                                        }}
-                                                        className="px-6 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-400 rounded-lg font-medium transition-colors flex items-center gap-2"
-                                                    >
-                                                        <X size={18} />
-                                                        Rejeitar
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-16 text-white/40 bg-white/5 rounded-xl border border-dashed border-white/10">
-                                        <ShieldCheck size={48} className="mx-auto mb-4 opacity-30" />
-                                        <p className="text-lg font-medium">Nenhum cadastro pendente</p>
-                                        <p className="text-sm mt-2">Todos os alunos foram aprovados ou ainda não há cadastros.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Approved Students */}
-                        <div className="bg-black border border-white/10 rounded-2xl p-6">
-                            <h3 className="text-xl font-bold text-white mb-6">Alunos Aprovados</h3>
                             <div className="space-y-3">
                                 {studentsData.filter(s => s.status === 'approved').length > 0 ? (
                                     studentsData.filter(s => s.status === 'approved').map((student) => (

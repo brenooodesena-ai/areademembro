@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Lock, ArrowRight, User, AlertCircle, CheckCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { db } from './lib/db';
 import { hashPassword } from './lib/auth';
 
@@ -10,8 +10,6 @@ interface LoginProps {
 }
 
 export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
-    const [isLogin, setIsLogin] = useState(true);
-    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -67,8 +65,6 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                     type: 'success', 
                     text: 'Solicitado! Sua automação enviará o link em instantes.' 
                 });
-                
-                // Stay in step 1 or show a specialized success view
             } else {
                 // Step 2: Confirm Reset (via Token)
                 if (!password.trim() || password.length < 6) {
@@ -82,9 +78,6 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                 }
 
                 const passwordHash = await hashPassword(password);
-                
-                // Se chegamos aqui via link direto (resetData), podemos usar o updatePassword
-                // O updatePassword já limpa o token no banco.
                 await db.updatePassword(resetEmail.trim(), passwordHash);
 
                 setMessage({ type: 'success', text: 'Senha alterada com sucesso! Faça login.' });
@@ -112,103 +105,45 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
         setMessage(null);
 
         try {
-            if (isLogin) {
-                // LOGIN
-                if (!email.trim() || !password.trim()) {
-                    setMessage({ type: 'error', text: 'Preencha email e senha.' });
-                    return;
-                }
-
-                const passwordHash = await hashPassword(password);
-
-                // BYPASS DE EMERGÊNCIA: Garantir acesso do admin independente do banco de dados
-                let student = await db.loginStudent(email.trim(), passwordHash);
-
-                if (!student) {
-                    setMessage({ type: 'error', text: 'Email ou senha incorretos.' });
-                    return;
-                }
-
-                if ((student as any).loginError === 'pending') {
-                    setMessage({
-                        type: 'info',
-                        text: 'Seu cadastro está aguardando aprovação do administrador.'
-                    });
-                    return;
-                }
-
-                if ((student as any).loginError === 'rejected') {
-                    setMessage({
-                        type: 'error',
-                        text: 'Seu cadastro foi rejeitado. Entre em contato com o suporte.'
-                    });
-                    return;
-                }
-
-                // Login bem-sucedido
-                const isAdmin = email.trim().toLowerCase() === 'brenooodesena@gmail.com';
-                onLogin(isAdmin, email.trim());
-
-
-            } else {
-                // CADASTRO
-                if (!name.trim()) {
-                    setMessage({ type: 'error', text: 'Por favor, preencha seu nome.' });
-                    return;
-                }
-                if (!email.trim() || !password.trim()) {
-                    setMessage({ type: 'error', text: 'Preencha todos os campos.' });
-                    return;
-                }
-                if (password.length < 6) {
-                    setMessage({ type: 'error', text: 'Senha deve ter no mínimo 6 caracteres.' });
-                    return;
-                }
-
-                const passwordHash = await hashPassword(password);
-
-                // Auto-aprovar se for o email do admin
-                const isAdminEmail = email.trim().toLowerCase() === 'brenooodesena@gmail.com';
-
-                if (isAdminEmail) {
-                    // Cadastrar admin com status approved
-                    await db.registerStudent(name.trim(), email.trim(), passwordHash, 'approved');
-
-                    setMessage({
-                        type: 'success',
-                        text: '✅ Cadastro de administrador criado! Você já pode fazer login.'
-                    });
-                } else {
-                    // Cadastro normal (precisa aprovação)
-                    await db.registerStudent(name.trim(), email.trim(), passwordHash);
-
-                    setMessage({
-                        type: 'success',
-                        text: 'Cadastro enviado! Aguarde a aprovação do administrador.'
-                    });
-                }
-
-                // Limpar formulário
-                setName('');
-                setEmail('');
-                setPassword('');
-
-                // Mudar para tela de login
-                setTimeout(() => {
-                    setIsLogin(true);
-                    setMessage(null);
-                }, isAdminEmail ? 2000 : 3000);
+            // LOGIN
+            if (!email.trim() || !password.trim()) {
+                setMessage({ type: 'error', text: 'Preencha email e senha.' });
+                return;
             }
-        } catch (error: any) {
-            console.error(error);
-            if (error.message?.includes('duplicate')) {
-                setMessage({ type: 'error', text: 'Este email já está cadastrado.' });
-            } else {
+
+            const passwordHash = await hashPassword(password);
+            let student = await db.loginStudent(email.trim(), passwordHash);
+
+            if (!student) {
+                setMessage({ type: 'error', text: 'Email ou senha incorretos.' });
+                return;
+            }
+
+            if ((student as any).loginError === 'pending') {
+                setMessage({
+                    type: 'info',
+                    text: 'Seu cadastro está aguardando aprovação do administrador.'
+                });
+                return;
+            }
+
+            if ((student as any).loginError === 'rejected') {
                 setMessage({
                     type: 'error',
-                    text: isLogin ? 'Erro ao fazer login.' : 'Erro ao cadastrar. Tente novamente.'
+                    text: 'Seu cadastro foi rejeitado. Entre em contato com o suporte.'
                 });
+                return;
             }
+
+            // Login bem-sucedido
+            const isAdmin = email.trim().toLowerCase() === 'brenooodesena@gmail.com';
+            onLogin(isAdmin, email.trim());
+        } catch (error: any) {
+            console.error(error);
+            setMessage({
+                type: 'error',
+                text: 'Erro ao fazer login.'
+            });
         } finally {
             setIsLoading(false);
         }
@@ -254,7 +189,7 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                         <p className="text-white/40 text-sm">
                             {isForgotPassword
                                 ? (resetStep === 2 ? 'crie sua nova senha de acesso' : 'Digite seu email para continuar')
-                                : (isLogin ? 'Acesse seus cursos e ferramentas' : 'Solicite seu acesso')
+                                : 'Acesse seus cursos e ferramentas'
                             }
                         </p>
                     </div>
@@ -279,37 +214,6 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                         </div>
                     )}
 
-                    {/* Toggle Tabs (Only show if not in forgot password mode) */}
-                    {!isForgotPassword && (
-                        <div className="flex bg-white/5 p-1 rounded-xl mb-6 sm:mb-8 border border-white/5">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsLogin(true);
-                                    setMessage(null);
-                                }}
-                                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-300 cursor-pointer ${isLogin
-                                    ? 'bg-black text-white shadow-sm border border-white/10'
-                                    : 'text-white/40 hover:text-white/70'
-                                    }`}
-                            >
-                                Entrar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsLogin(false);
-                                    setMessage(null);
-                                }}
-                                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-300 cursor-pointer ${!isLogin
-                                    ? 'bg-black text-white shadow-sm border border-white/10'
-                                    : 'text-white/40 hover:text-white/70'
-                                    }`}
-                            >
-                                Criar conta
-                            </button>
-                        </div>
-                    )}
 
                     {/* Form */}
                     {isForgotPassword ? (
@@ -395,26 +299,6 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                         </form>
                     ) : (
                         <form className="space-y-5" onSubmit={handleSubmit}>
-                            {!isLogin && (
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-white/70 ml-1">Nome Completo</label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/40 group-focus-within:text-gold-400 transition-colors z-20">
-                                            <User size={20} />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder="Seu nome completo"
-                                            className="input-premium !pl-14 relative"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            required={!isLogin}
-                                            disabled={isLoading}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-white/70 ml-1">Email</label>
                                 <div className="relative group">
@@ -441,7 +325,7 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                                     </div>
                                     <input
                                         type={showPassword ? "text" : "password"}
-                                        placeholder={isLogin ? 'Sua senha' : 'Mínimo 6 caracteres'}
+                                        placeholder="Sua senha"
                                         className="input-premium !pl-14 !pr-12 relative"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -456,21 +340,19 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
                                 </div>
-                                {isLogin && (
-                                    <div className="flex justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsForgotPassword(true);
-                                                setMessage(null);
-                                                setPassword("");
-                                            }}
-                                            className="text-xs text-gold-400/80 hover:text-gold-400 transition-colors cursor-pointer bg-transparent border-none p-0"
-                                        >
-                                            Esqueci minha senha
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsForgotPassword(true);
+                                            setMessage(null);
+                                            setPassword("");
+                                        }}
+                                        className="text-xs text-gold-400/80 hover:text-gold-400 transition-colors cursor-pointer bg-transparent border-none p-0"
+                                    >
+                                        Esqueci minha senha
+                                    </button>
+                                </div>
                             </div>
 
                             <button
@@ -483,7 +365,7 @@ export function Login({ onLogin, resetData, onClearReset }: LoginProps) {
                                 ) : (
                                     <>
                                         <span className="font-semibold text-black tracking-wide">
-                                            {isLogin ? 'Entrar Agora' : 'Criar Conta'}
+                                            Entrar Agora
                                         </span>
                                         <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform text-black" />
                                     </>
