@@ -125,7 +125,16 @@ app.post('/webhook', async (req, res) => {
         const hashedPassword = hashPassword(tempPassword);
         const now = new Date().toISOString();
 
-        // 1. Verificar se o aluno já existe
+        // 1. Detectar se é Vitalício pelo Order Bump na Kiwify
+        const orderBumps = req.body.Complements?.order_bumps || [];
+        const isLifetime = orderBumps.some(bump => 
+            bump.product_name && bump.product_name.toLowerCase().includes('vitalicio')
+        );
+
+        const accessType = isLifetime ? 'lifetime' : 'annual';
+        const expiryAt = isLifetime ? null : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString();
+
+        // 2. Verificar se o aluno já existe
         const { data: existingStudent, error: fetchError } = await supabase
             .from('students')
             .select('*')
@@ -145,10 +154,12 @@ app.post('/webhook', async (req, res) => {
                         status: 'approved',
                         progress: 0,
                         lastAccess: now,
-                        password_hash: hashedPassword
+                        password_hash: hashedPassword,
+                        access_type: accessType,
+                        expiry_at: expiryAt
                     });
                 if (insertError) throw insertError;
-                console.log(`✅ Novo aluno criado: ${email}`);
+                console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
                 await sendWelcomeEmail(email, firstName, tempPassword);
             } else {
                 const { error: updateError } = await supabase
@@ -157,11 +168,13 @@ app.post('/webhook', async (req, res) => {
                         status: 'approved',
                         name: fullName,
                         password_hash: hashedPassword,
-                        lastAccess: now
+                        lastAccess: now,
+                        access_type: accessType,
+                        expiry_at: expiryAt
                     })
                     .eq('id', existingStudent.id);
                 if (updateError) throw updateError;
-                console.log(`✅ Aluno reativado: ${email}`);
+                console.log(`✅ Aluno reativado (${accessType}): ${email}`);
                 await sendWelcomeEmail(email, firstName, tempPassword);
             }
         }

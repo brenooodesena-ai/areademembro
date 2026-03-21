@@ -646,13 +646,27 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                             </div>
 
                                             <div className="flex-1">
-                                                <div className="flex justify-between text-xs mb-1.5">
-                                                    <span className="text-white/60">Progresso do Treinamento</span>
-                                                    <span className={`${student.progress === 100 ? 'text-green-400 font-bold' : 'text-gold-400 font-bold'}`}>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                            student.access_type === 'lifetime' 
+                                                            ? 'bg-gold-500/20 text-gold-500 border border-gold-400/30' 
+                                                            : 'bg-white/10 text-white/60 border border-white/10'
+                                                        }`}>
+                                                            {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
+                                                        </span>
+                                                        {student.access_type === 'annual' && student.expiry_at && (
+                                                            <span className="text-[10px] text-white/30 italic">
+                                                                Expira: {new Date(student.expiry_at).toLocaleDateString('pt-BR')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className={`${student.progress === 100 ? 'text-green-400 font-bold' : 'text-gold-400 font-bold'} text-xs`}>
                                                         {student.progress}%
                                                     </span>
                                                 </div>
                                                 <div className="w-full bg-black h-2 rounded-full border border-white/10 overflow-hidden">
+
                                                     <div
                                                         className={`h-full rounded-full transition-all duration-1000 ${student.progress === 100 ? 'bg-green-500' : 'bg-gold-500'}`}
                                                         style={{ width: `${student.progress}%` }}
@@ -1136,9 +1150,24 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                     {(student.name || student.email || "Aluno").split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-white">{student.name || "Sem Nome"}</h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-bold text-white">{student.name || "Sem Nome"}</h4>
+                                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                                            student.access_type === 'lifetime' 
+                                                            ? 'bg-gold-500/20 text-gold-500 border border-gold-500/20' 
+                                                            : 'bg-white/5 text-white/40 border border-white/10'
+                                                        }`}>
+                                                            {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
+                                                        </span>
+                                                    </div>
                                                     <p className="text-xs text-white/40">{student.email || "Sem Email"}</p>
+                                                    {student.access_type === 'annual' && student.expiry_at && (
+                                                        <p className="text-[9px] text-white/20 italic">
+                                                            Expira em: {new Date(student.expiry_at).toLocaleDateString('pt-BR')}
+                                                        </p>
+                                                    )}
                                                 </div>
+
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <div className="flex items-center gap-2 text-green-400 text-sm">

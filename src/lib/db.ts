@@ -44,6 +44,8 @@ export interface Student {
     purchase_at: string; // Data exata da compra/liberação inicial
     image?: string | null;
     created_at?: string;
+    access_type?: 'annual' | 'lifetime';
+    expiry_at?: string | null;
 }
 
 export const db = {
@@ -284,7 +286,9 @@ export const db = {
                 progress: 0,
                 lastAccess: now,
                 created_at: now,
-                purchase_at: now
+                purchase_at: now,
+                access_type: 'annual',
+                expiry_at: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString()
             })
             .select()
             .single();

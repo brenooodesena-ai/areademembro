@@ -49,7 +49,9 @@ create table public.students (
   "approved_by" text,
   "created_at" timestamptz default now(),
   "reset_token" text,
-  "reset_expires" timestamptz
+  "reset_expires" timestamptz,
+  "access_type" text default 'annual',
+  "expiry_at" timestamptz
 );
 
 -- Create Access Logs Table
