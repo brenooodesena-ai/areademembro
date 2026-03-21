@@ -487,7 +487,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                         onClick={() => setActiveTab('approvals')}
                         className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm whitespace-nowrap ${activeTab === 'approvals' ? 'bg-gold-500 text-black font-bold shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                     >
-                        <ShieldCheck size={16} /> Liberação e Alunos
+                        <Users size={16} /> Alunos
                     </button>
                 </nav>
             </div>
@@ -1020,7 +1020,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                     <div className="max-w-6xl space-y-8">
                         {/* Header */}
                         <div className="flex items-center gap-8 mb-8">
-                            <h2 className="text-3xl font-bold text-white">Liberação e Alunos</h2>
+                            <h2 className="text-3xl font-bold text-white">Alunos</h2>
                             <button
                                 onClick={() => setIsAddStudentModalOpen(true)}
                                 className="bg-gold-500 text-black px-6 py-2.5 rounded-xl font-bold hover:bg-gold-400 transition-all flex items-center gap-2 shadow-lg shadow-gold-500/20"
@@ -1058,6 +1058,11 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-bold text-white">{student.name || "Sem Nome"}</h4>
+                                                        {student.email?.toLowerCase() === 'brenooodesena@gmail.com' && (
+                                                            <span className="bg-red-500/20 text-red-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-red-500/20">
+                                                                ADMINISTRADOR
+                                                            </span>
+                                                        )}
                                                         <button 
                                                             onClick={async () => {
                                                                 const newType = student.access_type === 'lifetime' ? 'annual' : 'lifetime';
