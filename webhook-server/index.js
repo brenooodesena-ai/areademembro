@@ -104,8 +104,21 @@ function hashPassword(password) {
 
 // Rota para o Webhook
 app.post('/webhook', async (req, res) => {
-    console.log('--- NOVO WEBHOOK RECEBIDO ---');
+    // 0. IGNORAR WEBHOOKS DO SUPABASE (Database Webhooks)
+    // Se o payload vier do Supabase, ele terá os campos 'table' e 'type' (INSERT, UPDATE, DELETE)
+    // Isso evita que mudanças manuais no banco ou no front acionem o servidor de venda.
+    if (req.body.table && req.body.type) {
+        console.log(`ℹ️ Ignorando Database Webhook (${req.body.type} na tabela ${req.body.table})`);
+        return res.status(200).send({ status: 'ignored', message: 'Database Webhook ignorado' });
+    }
+
     const { order_status, Customer, customer, webhook_event_type } = req.body;
+
+    // Se não for uma venda da Kiwify (que envia order_status), ignoramos.
+    if (!order_status && !webhook_event_type) {
+        console.log('ℹ️ Webhook ignorado: Não parece ser um evento de venda da Kiwify.');
+        return res.status(200).send({ status: 'ignored', message: 'Evento de venda não identificado' });
+    }
 
     const clienteDados = Customer || customer;
 

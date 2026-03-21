@@ -25,14 +25,22 @@ Deno.serve(async (req) => {
 
     try {
         const rawBody = await req.text();
-        let payload = {};
+        let payload: any = {};
         try { payload = JSON.parse(rawBody || "{}"); } catch (e) { }
+
+        // 0. IGNORAR WEBHOOKS DO SUPABASE (Database Webhooks)
+        if (payload.table && payload.type && payload.record) {
+            console.log(`ℹ️ [${requestId}] Database Webhook detectado (${payload.type} em ${payload.table}). Ignorando para evitar emails duplicados.`);
+            return new Response(JSON.stringify({ status: 'ignored', message: 'Database Webhook ignorado' }), { status: 200, headers });
+        }
 
         let email = payload.email || payload.customer?.email || payload.customer_email || payload.data?.email;
         let name = payload.name || payload.customer?.name || "Aluno";
 
-        if (!email) {
-            return new Response(JSON.stringify({ status: 'ignored', message: 'Sem email no payload' }), { status: 200, headers });
+        // Adicional: Se não houver campos de compra da Kiwify, ignora
+        if (!email || (!payload.order_status && !payload.webhook_event_type)) {
+            console.log(`ℹ️ [${requestId}] Webhook ignorado: Não parece uma venda da Kiwify.`);
+            return new Response(JSON.stringify({ status: 'ignored', message: 'Não é um evento de venda' }), { status: 200, headers });
         }
 
         const resendKey = Deno.env.get('RESEND_API_KEY');
