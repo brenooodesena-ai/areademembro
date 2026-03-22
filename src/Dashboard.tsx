@@ -485,6 +485,7 @@ export function Dashboard({ onLogout, modules, bannerConfig, onAdminAccess, show
                 modules={modules}
                 isOpen={isAIOpen}
                 onClose={() => setIsAIOpen(false)}
+                studentName={userName}
             />
 
             {/* Navbar Minimalist */}
