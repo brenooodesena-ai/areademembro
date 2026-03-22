@@ -26,6 +26,7 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 console.log('✅ Supabase Client inicializado com sucesso.');
+console.log('🔥 V2.0 ATIVA: GERADOR DE ID AUTOMÁTICO PRONTO!');
 
 // Inicializar Resend
 let resend;
