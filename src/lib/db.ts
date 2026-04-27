@@ -122,7 +122,7 @@ export const db = {
             .eq('id', module.id);
 
         // Delete lessons not in the current list
-        const currentLessonIds = module.lessons.map(l => l.id).filter(id => id.length > 10);
+        const currentLessonIds = module.lessons.map(l => l.id).filter(id => id.length > 20);
         if (currentLessonIds.length > 0) {
             await supabase
                 .from('lessons')
@@ -140,7 +140,7 @@ export const db = {
         // Upsert lessons
         for (let i = 0; i < module.lessons.length; i++) {
             const l = module.lessons[i];
-            const isNew = l.id.length < 10; // Simple check for temp numeric IDs
+            const isNew = l.id.length < 20; // Simple check for temp numeric IDs
 
             const payload = {
                 module_id: module.id,
@@ -171,7 +171,7 @@ export const db = {
     },
 
     saveLesson: async (moduleId: string, lesson: Lesson) => {
-        const isNew = !lesson.id || lesson.id.length < 10;
+        const isNew = !lesson.id || lesson.id.length < 20;
         const payload = {
             module_id: moduleId,
             title: lesson.title,
