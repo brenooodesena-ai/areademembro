@@ -157,8 +157,12 @@ export const db = {
                 order_index: i
             };
 
+            console.log(`[db.ts] Upserting lesson ${l.id} - ${l.title}`);
             const { error: upsertErr } = await supabase.from('lessons').upsert(payload);
-            if (upsertErr) throw upsertErr;
+            if (upsertErr) {
+                console.error(`[db.ts] Error upserting lesson ${l.id}:`, upsertErr);
+                throw upsertErr;
+            }
         }
     },
 
