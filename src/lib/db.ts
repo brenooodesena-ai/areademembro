@@ -122,7 +122,7 @@ export const db = {
             .eq('id', module.id);
 
         // Delete lessons not in the current list
-        const currentLessonIds = module.lessons.map(l => l.id).filter(id => id.length > 20);
+        const currentLessonIds = module.lessons.map(l => l.id);
         if (currentLessonIds.length > 0) {
             await supabase
                 .from('lessons')
@@ -140,9 +140,9 @@ export const db = {
         // Upsert lessons
         for (let i = 0; i < module.lessons.length; i++) {
             const l = module.lessons[i];
-            const isNew = l.id.length < 20; // Simple check for temp numeric IDs
 
             const payload = {
+                id: l.id,
                 module_id: module.id,
                 title: l.title,
                 description: l.description,
@@ -157,11 +157,8 @@ export const db = {
                 order_index: i
             };
 
-            if (isNew) {
-                await supabase.from('lessons').insert(payload);
-            } else {
-                await supabase.from('lessons').update(payload).eq('id', l.id);
-            }
+            const { error: upsertErr } = await supabase.from('lessons').upsert(payload);
+            if (upsertErr) throw upsertErr;
         }
     },
 
@@ -171,8 +168,8 @@ export const db = {
     },
 
     saveLesson: async (moduleId: string, lesson: Lesson) => {
-        const isNew = !lesson.id || lesson.id.length < 20;
         const payload = {
+            id: lesson.id,
             module_id: moduleId,
             title: lesson.title,
             description: lesson.description || "",
@@ -186,15 +183,9 @@ export const db = {
             link_description: lesson.link_description || ""
         };
 
-        if (isNew) {
-            const { data, error } = await supabase.from('lessons').insert(payload).select().single();
-            if (error) throw error;
-            return data;
-        } else {
-            const { data, error } = await supabase.from('lessons').update(payload).eq('id', lesson.id).select().single();
-            if (error) throw error;
-            return data;
-        }
+        const { data, error } = await supabase.from('lessons').upsert(payload).select().single();
+        if (error) throw error;
+        return data;
     },
 
     deleteLesson: async (lessonId: string) => {
