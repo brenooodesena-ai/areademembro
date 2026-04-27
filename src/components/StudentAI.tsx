@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bot, Sparkles, Send, User, X, Maximize2, Minimize2, Loader2, Download, FileText, CheckCircle2 } from 'lucide-react';
+import { Bot, Send, User, X, Maximize2, Minimize2, Loader2, FileText, CheckCircle2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 
 interface Lesson {
@@ -72,7 +72,7 @@ const QUESTIONS = [
     }
 ];
 
-export function StudentAI({ modules, isOpen, onClose, studentName }: StudentAIProps) {
+export function StudentAI({ isOpen, onClose, studentName }: StudentAIProps) {
     const [isMinimized, setIsMinimized] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState("");
@@ -142,9 +142,8 @@ export function StudentAI({ modules, isOpen, onClose, studentName }: StudentAIPr
         const isBeginner = finalAnswers.level === 'Iniciante';
         const isAdvanced = finalAnswers.level === 'Avançado';
         const isHardcore = finalAnswers.pace === 'Acelerado e Intenso';
-        const isWeekendOnly = finalAnswers.days === 'Finais de Semana';
         
-        let daysToStudy = [];
+        let daysToStudy: string[] = [];
         if (finalAnswers.days === 'Segunda a Sexta') daysToStudy = ['Segunda', 'Quarta', 'Sexta'];
         if (finalAnswers.days === 'Finais de Semana') daysToStudy = ['Sábado', 'Domingo'];
         if (finalAnswers.days === 'Todos os dias') daysToStudy = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
