@@ -37,6 +37,9 @@ if (process.env.RESEND_API_KEY) {
     console.error('⚠️ ATENÇÃO: RESEND_API_KEY não encontrada. O envio de e-mails não funcionará.');
 }
 
+// URL da Área de Membros configurável por variável de ambiente
+const membersAreaUrl = process.env.MEMBERS_AREA_URL || 'https://www.caminhodigitalmaster.com';
+
 // Função para enviar email de boas-vindas
 async function sendWelcomeEmail(email, firstName, password) {
     if (!resend) {
@@ -60,7 +63,7 @@ async function sendWelcomeEmail(email, firstName, password) {
             <p style="margin: 6px 0; font-size: 16px;"><strong>Senha:</strong> <span style="color: #333;">${password}</span></p>
           </div>
           <div style="text-align: center; margin-bottom: 30px;">
-            <a href="https://www.caminhodigitalmaster.com" 
+            <a href="${membersAreaUrl}" 
                style="background-color: #2ecc71; display: inline-block; padding: 18px 50px; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 20px; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);">
               Acesse aqui
             </a>
@@ -115,7 +118,7 @@ async function sendUpgradeEmail(email, firstName) {
             <p style="margin: 6px 0; font-size: 16px;">Basta fazer login usando o seu e-mail: <strong style="color: #333;">${email}</strong> e a sua <strong>senha atual</strong>.</p>
           </div>
           <div style="text-align: center; margin-bottom: 30px;">
-            <a href="https://www.caminhodigitalmaster.com" 
+            <a href="${membersAreaUrl}" 
                style="background-color: #2ecc71; display: inline-block; padding: 18px 50px; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 20px; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);">
               Acesse agora
             </a>
