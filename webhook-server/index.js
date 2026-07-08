@@ -38,7 +38,7 @@ if (process.env.RESEND_API_KEY) {
 }
 
 // URL da Área de Membros configurável por variável de ambiente
-const membersAreaUrl = process.env.MEMBERS_AREA_URL || 'https://www.caminhodigitalmaster.com';
+const membersAreaUrl = process.env.MEMBERS_AREA_URL || 'https://membros.caminhodigitalmaster.com';
 
 // Função para enviar email de boas-vindas
 async function sendWelcomeEmail(email, firstName, password) {
