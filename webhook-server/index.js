@@ -37,8 +37,8 @@ if (process.env.RESEND_API_KEY) {
     console.error('⚠️ ATENÇÃO: RESEND_API_KEY não encontrada. O envio de e-mails não funcionará.');
 }
 
-// URL da Área de Membros configurável por variável de ambiente
-const membersAreaUrl = process.env.MEMBERS_AREA_URL || 'https://membros.caminhodigitalmaster.com';
+// URL da Área de Membros
+const membersAreaUrl = 'https://membros.caminhodigitalmaster.com';
 
 // Função para enviar email de boas-vindas
 async function sendWelcomeEmail(email, firstName, password) {
