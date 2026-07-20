@@ -296,115 +296,94 @@ app.post('/webhook', async (req, res) => {
         const accessType = isLifetime ? 'lifetime' : 'annual';
         const expiryAt = isLifetime ? null : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString();
 
-        // ----- Upsert (INSERT / UPDATE) -----
-// Montamos o payload base (sem password_hash). O hash será definido apenas se for inserção.
-const upsertPayload = {
-    email,
-    name: fullName,
-    status: 'approved',
-    lastAccess: now,
-    access_type: accessType,
-    expiry_at: expiryAt,
-};
+        // ----- Select Existing Student -----
+        const { data: existingStudent, error: selectError } = await supabase
+            .from('students')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
 
-const { data: upserted, error: upsertError } = await supabase
-    .from('students')
-    .upsert([upsertPayload], {
-        onConflict: 'email',
-        returning: 'representation', // devolve o registro final (inserido ou atualizado)
-    });
-if (upsertError) throw upsertError;
-if (!upserted || upserted.length === 0) throw new Error('Upsert falhou sem retorno.');
+        if (selectError) throw selectError;
 
-const studentRecord = upserted[0];
-// Determine if this is a newly created student by checking if password_hash is absent.
-const isNewStudent = !studentRecord.password_hash;
-
-if (isNewStudent) {
-    // Novo aluno: gera senha temporária e grava o hash.
-    const tempPassword = generateTempPassword();
-    const hashedPassword = await hashPasswordAsync(tempPassword);
-    const { error: pwdError } = await supabase
-        .from('students')
-        .update({ password_hash: hashedPassword })
-        .eq('email', email);
-    if (pwdError) throw pwdError;
-        await module.exports.sendWelcomeEmail(email, firstName, tempPassword);
-        console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
-      } else {
-        // Aluno já existente – não altera senha.
-        console.log(`✅ Aluno atualizado (${accessType}): ${email}`);
-        await module.exports.sendUpgradeEmail(email, firstName);
-}
-// ----- Cancelamento / Reembolso -----
-const isRefund = ['refunded', 'chargeback', 'canceled'].includes(status) ||
-                 ['order_refunded', 'order_canceled'].includes(webhook_event_type);
-if (isRefund && !isNewStudent) {
-    const { error: refundError } = await supabase
-        .from('students')
-        .update({ status: 'rejected' })
-        .eq('email', email);
-    if (refundError) throw refundError;
-    console.log(`❌ Acesso bloqueado para: ${email}`);
-}
-
+        // ----- Cancelamento / Reembolso -----
+        const isRefund = ['refunded', 'chargeback', 'canceled'].includes(status) ||
+                         ['order_refunded', 'order_canceled'].includes(webhook_event_type);
         
-
-
-
-if (false) { // Legacy duplicate handling removed
-        if (status === 'paid' || status === 'approved') {
-            if (!existingStudent) {
-                const studentId = Math.random().toString(36).substring(2, 11);
-                const { error: insertError } = await supabase
+        if (isRefund) {
+            if (existingStudent) {
+                const { error: refundError } = await supabase
                     .from('students')
-                    .insert({
-                        id: studentId,
-                        name: fullName,
-                        email: email,
-                        status: 'approved',
-                        progress: 0,
-                        lastAccess: now,
-                        password_hash: hashedPassword,
-                        access_type: accessType,
-                        expiry_at: expiryAt
-                    });
-                if (insertError) throw insertError;
-                await sendWelcomeEmail(email, firstName, tempPassword);
-                console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
+                    .update({ status: 'rejected' })
+                    .eq('email', email);
+                if (refundError) throw refundError;
+                console.log(`❌ Acesso bloqueado para: ${email}`);
             } else {
+                console.log(`ℹ️ Reembolso recebido para aluno inexistente: ${email}`);
+            }
+            return res.status(200).send({ status: 'success' });
+        }
+
+        // ----- Compra / Aprovação -----
+        if (status === 'paid' || status === 'approved' || webhook_event_type === 'order_approved') {
+            const isNewStudent = !existingStudent;
+            const isReturningStudent = existingStudent && existingStudent.status === 'rejected';
+
+            if (isNewStudent || isReturningStudent) {
+                // Novo aluno ou aluno retornando (reembolsado que comprou de novo)
+                const tempPassword = generateTempPassword();
+                const hashedPassword = await hashPasswordAsync(tempPassword);
+
+                if (isNewStudent) {
+                    const { error: insertError } = await supabase
+                        .from('students')
+                        .insert({
+                            email,
+                            name: fullName,
+                            status: 'approved',
+                            lastAccess: now,
+                            access_type: accessType,
+                            expiry_at: expiryAt,
+                            password_hash: hashedPassword
+                        });
+                    if (insertError) throw insertError;
+                    console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
+                } else {
+                    // isReturningStudent
+                    const { error: updateError } = await supabase
+                        .from('students')
+                        .update({
+                            status: 'approved',
+                            lastAccess: now,
+                            access_type: accessType,
+                            expiry_at: expiryAt,
+                            password_hash: hashedPassword,
+                            name: fullName
+                        })
+                        .eq('email', email);
+                    if (updateError) throw updateError;
+                    console.log(`✅ Aluno reativado com nova senha (${accessType}): ${email}`);
+                }
+                
+                await module.exports.sendWelcomeEmail(email, firstName, tempPassword);
+            } else {
+                // Aluno já existe e já está ativo
                 const { error: updateError } = await supabase
                     .from('students')
                     .update({
                         status: 'approved',
-                        name: fullName,
-                        // password_hash NÃO é atualizado para não apagar a senha existente do aluno
                         lastAccess: now,
                         access_type: accessType,
-                        expiry_at: expiryAt
+                        expiry_at: expiryAt,
+                        name: fullName
+                        // NOTA: não alteramos o password_hash
                     })
-                    .eq('id', existingStudent.id);
+                    .eq('email', email);
                 if (updateError) throw updateError;
-                console.log(`✅ Aluno atualizado (${accessType}): ${email}`);
                 
-                // Enviar email de 'Renovação/Atualização' em vez de Boas-Vindas
-                await sendUpgradeEmail(email, firstName);
+                console.log(`✅ Aluno atualizado (${accessType}): ${email}`);
+                await module.exports.sendUpgradeEmail(email, firstName);
             }
         }
-
-        // CASO 2: Cancelamento/Reembolso
-        const isRefund = ['refunded', 'chargeback', 'canceled'].includes(status) || 
-                         ['order_refunded', 'order_canceled'].includes(webhook_event_type);
-
-        if (isRefund && existingStudent) {
-            const { error: refundError } = await supabase
-                .from('students')
-                .update({ status: 'rejected' })
-                .eq('id', existingStudent.id);
-            if (refundError) throw refundError;
-            console.log(`❌ Acesso bloqueado para: ${email}`);
-        }
-}
         return res.status(200).send({ status: 'success' });
     } catch (error) {
         console.error('❌ Erro processando webhook:', error.message);
