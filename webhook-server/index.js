@@ -263,10 +263,14 @@ app.post('/webhook', async (req, res) => {
         }
     }
 
-    const { order_status, Customer, customer, webhook_event_type } = req.body;
+    const { Customer, customer, webhook_event_type } = req.body;
 
-    // Se não for uma venda da Kiwify (que envia order_status), ignoramos.
-    if (!order_status && !webhook_event_type) {
+    const rawStatus = req.body.order_status || req.body.status || req.body.event || '';
+    const status = String(rawStatus).toLowerCase().trim();
+    const eventType = String(webhook_event_type || '').toLowerCase().trim();
+
+    // Se não for um evento reconhecido da Kiwify, ignoramos.
+    if (!status && !eventType) {
         console.log('ℹ️ Webhook ignorado: Não parece ser um evento de venda da Kiwify.');
         return res.status(200).send({ status: 'ignored', message: 'Evento de venda não identificado' });
     }
@@ -280,9 +284,8 @@ app.post('/webhook', async (req, res) => {
     const email = clienteDados.email.toLowerCase().trim();
     const fullName = clienteDados.full_name || clienteDados.name || 'Aluno';
     const firstName = clienteDados.first_name || fullName.split(' ')[0];
-    const status = order_status;
 
-    console.log(`📩 Processando ${email}. Status: ${status}`);
+    console.log(`📩 Processando ${email}. Status: ${status || eventType}`);
 
     try {
         const now = new Date().toISOString();
@@ -306,8 +309,8 @@ app.post('/webhook', async (req, res) => {
         if (selectError) throw selectError;
 
         // ----- Cancelamento / Reembolso -----
-        const isRefund = ['refunded', 'chargeback', 'canceled'].includes(status) ||
-                         ['order_refunded', 'order_canceled'].includes(webhook_event_type);
+        const isRefund = ['refunded', 'chargeback', 'chargedback', 'canceled', 'cancelled', 'refused', 'disputed'].includes(status) ||
+                         ['order_refunded', 'order_canceled', 'order_chargedback', 'subscription_canceled'].includes(eventType);
         
         if (isRefund) {
             if (existingStudent) {
@@ -324,12 +327,15 @@ app.post('/webhook', async (req, res) => {
         }
 
         // ----- Compra / Aprovação -----
-        if (status === 'paid' || status === 'approved' || webhook_event_type === 'order_approved') {
-            const isNewStudent = !existingStudent;
-            const isReturningStudent = existingStudent && existingStudent.status === 'rejected';
+        const isApproval = ['paid', 'approved', 'completed'].includes(status) ||
+                           ['order_approved'].includes(eventType);
+
+        if (isApproval) {
+            const isNewStudent = !existingStudent || !existingStudent.password_hash;
+            const isReturningStudent = existingStudent && existingStudent.status !== 'approved';
 
             if (isNewStudent || isReturningStudent) {
-                // Novo aluno ou aluno retornando (reembolsado que comprou de novo)
+                // Novo aluno ou aluno retornando (reembolsado/bloqueado que comprou de novo)
                 const tempPassword = generateTempPassword();
                 const hashedPassword = await hashPasswordAsync(tempPassword);
 

@@ -70,7 +70,7 @@ describe('Webhook password handling', () => {
 
   test('duplicate webhook does not change password nor resend email', async () => {
     // Simular que o aluno já existe e está aprovado
-    selectResult = { data: { email: 'new@example.com', status: 'approved' }, error: null };
+    selectResult = { data: { email: 'new@example.com', status: 'approved', password_hash: '$argon2id$existinghash' }, error: null };
 
     const response = await request(app).post('/webhook').send(basePayload);
     expect(response.status).toBe(200);
@@ -87,7 +87,7 @@ describe('Webhook password handling', () => {
 
   test('refunded student buys again receives welcome email and new password', async () => {
     // Simular que o aluno já existe, mas estava reembolsado
-    selectResult = { data: { email: 'new@example.com', status: 'rejected' }, error: null };
+    selectResult = { data: { email: 'new@example.com', status: 'rejected', password_hash: '$argon2id$oldhash' }, error: null };
 
     const response = await request(app).post('/webhook').send(basePayload);
     expect(response.status).toBe(200);
