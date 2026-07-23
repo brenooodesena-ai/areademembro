@@ -20,7 +20,14 @@ const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 const { Resend } = require('resend');
 const crypto = require('crypto');
-const { hashPassword: hashPasswordAsync } = require('./passwordUtils');
+// Hash de senha usando SHA-256 + salt fixo — IDÊNTICO ao frontend (src/lib/auth.ts)
+// NÃO altere o algoritmo sem migrar os hashes existentes no banco!
+async function hashPasswordSHA256(password) {
+    const { createHash } = require('crypto');
+    const hash = createHash('sha256');
+    hash.update(password + 'area-membros-salt');
+    return hash.digest('hex');
+}
 
 const app = express();
 // CORS apenas para a área de membros
@@ -331,48 +338,27 @@ app.post('/webhook', async (req, res) => {
                            ['order_approved'].includes(eventType);
 
         if (isApproval) {
-            const isNewStudent = !existingStudent || !existingStudent.password_hash;
-            const isReturningStudent = existingStudent && existingStudent.status !== 'approved';
+            // SEMPRE gerar nova senha segura a cada compra aprovada
+            const tempPassword = generateTempPassword();
+            const hashedPassword = await hashPasswordSHA256(tempPassword);
 
-            if (isNewStudent || isReturningStudent) {
-                // Novo aluno ou aluno retornando (reembolsado/bloqueado que comprou de novo)
-                const tempPassword = generateTempPassword();
-                const hashedPassword = await hashPasswordAsync(tempPassword);
-
-                if (isNewStudent) {
-                    const { error: insertError } = await supabase
-                        .from('students')
-                        .insert({
-                            email,
-                            name: fullName,
-                            status: 'approved',
-                            lastAccess: now,
-                            access_type: accessType,
-                            expiry_at: expiryAt,
-                            password_hash: hashedPassword
-                        });
-                    if (insertError) throw insertError;
-                    console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
-                } else {
-                    // isReturningStudent
-                    const { error: updateError } = await supabase
-                        .from('students')
-                        .update({
-                            status: 'approved',
-                            lastAccess: now,
-                            access_type: accessType,
-                            expiry_at: expiryAt,
-                            password_hash: hashedPassword,
-                            name: fullName
-                        })
-                        .eq('email', email);
-                    if (updateError) throw updateError;
-                    console.log(`✅ Aluno reativado com nova senha (${accessType}): ${email}`);
-                }
-                
-                await module.exports.sendWelcomeEmail(email, firstName, tempPassword);
+            if (!existingStudent) {
+                // Novo aluno — criar registro
+                const { error: insertError } = await supabase
+                    .from('students')
+                    .insert({
+                        email,
+                        name: fullName,
+                        status: 'approved',
+                        lastAccess: now,
+                        access_type: accessType,
+                        expiry_at: expiryAt,
+                        password_hash: hashedPassword
+                    });
+                if (insertError) throw insertError;
+                console.log(`✅ Novo aluno criado (${accessType}): ${email}`);
             } else {
-                // Aluno já existe e já está ativo
+                // Aluno existente (ativo, inativo ou sem senha) — atualiza com nova senha
                 const { error: updateError } = await supabase
                     .from('students')
                     .update({
@@ -380,15 +366,16 @@ app.post('/webhook', async (req, res) => {
                         lastAccess: now,
                         access_type: accessType,
                         expiry_at: expiryAt,
+                        password_hash: hashedPassword,
                         name: fullName
-                        // NOTA: não alteramos o password_hash
                     })
                     .eq('email', email);
                 if (updateError) throw updateError;
-                
-                console.log(`✅ Aluno atualizado (${accessType}): ${email}`);
-                await module.exports.sendUpgradeEmail(email, firstName);
+                console.log(`✅ Aluno atualizado com nova senha (${accessType}): ${email}`);
             }
+
+            // Sempre enviar email com a nova senha gerada
+            await module.exports.sendWelcomeEmail(email, firstName, tempPassword);
         }
         return res.status(200).send({ status: 'success' });
     } catch (error) {
