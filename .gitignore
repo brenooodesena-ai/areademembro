@@ -30,3 +30,7 @@ dist-ssr
 .env.production
 .env.development
 .env.test
+
+# Supabase temp directories
+.temp
+supabase/.temp/
