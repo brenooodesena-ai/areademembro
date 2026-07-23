@@ -3,8 +3,7 @@ import { ArrowLeft, Plus, Image as ImageIcon, Users, Link as LinkIcon, Trash2, E
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { db as firestore } from './lib/firebase';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { supabase } from './lib/supabase';
 
 import type { BannerConfig, Module, Lesson, Attachment } from './Dashboard';
 import { db, type Student } from './lib/db';
@@ -39,15 +38,19 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
         }
     }, [activeTab]);
 
-    // Real-time Subscription (Firestore)
+    // Real-time Subscription (Supabase)
     useEffect(() => {
-        const q = query(collection(firestore, 'students'));
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            const students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
-            setStudentsData(students);
-        });
+        const channel = supabase
+            .channel('public:students')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, async () => {
+                const students = await db.getStudents();
+                setStudentsData(students);
+            })
+            .subscribe();
 
-        return () => unsubscribe();
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const [isRefreshing, setIsRefreshing] = useState(false);

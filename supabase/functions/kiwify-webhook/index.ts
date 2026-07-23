@@ -169,7 +169,52 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ status: 'ignored', message: 'Sem email do cliente' }), { status: 200, headers });
         }
 
-        const email = clienteDados.email.toLowerCase().trim();
+        // Expanded email extraction – covers all known Kiwify field names
+        const emailCandidates = [
+          clienteDados.email,
+          clienteDados.customer_email,
+          clienteDados.email_address,
+          payload.email,
+          payload.customer_email,
+          payload.customer?.email,
+          payload.data?.email,
+          payload.email_address
+        ];
+        const email = emailCandidates.find(e => !!e);
+        if (!email) {
+          console.log(`ℹ️ [${requestId}] Webhook ignorado: Nenhum e‑mail encontrado nos campos: ${JSON.stringify(emailCandidates)}`);
+          return new Response(JSON.stringify({ status: 'ignored', message: 'Sem email' }), { status: 200, headers });
+        }
+        const normalizedEmail = email.toLowerCase().trim();
+        const fullName = clienteDados.full_name || clienteDados.name || 'Aluno';
+        const firstName = clienteDados.first_name || fullName.split(' ')[0];
+        // Use normalizedEmail for further DB ops
+        // ----- Select Existing Student -----
+        const { data: existingStudent, error: selectError } = await supabase
+            .from('students')
+            .select('*')
+            .eq('email', normalizedEmail)
+            .maybeSingle();
+
+        if (selectError) throw selectError;
+
+        // ----- Cancelamento / Reembolso -----
+        const isRefund = ['refunded', 'chargeback', 'chargedback', 'canceled', 'cancelled', 'refused', 'disputed', 'refund_pending'].includes(status) ||
+                         ['order_refunded', 'order_canceled', 'order_chargedback', 'subscription_canceled', 'order_refund_pending'].includes(eventType);
+
+        if (isRefund) {
+            if (existingStudent) {
+                const { error: refundError } = await supabase
+                    .from('students')
+                    .update({ status: 'rejected', expiry_at: null })
+                    .eq('email', normalizedEmail);
+                if (refundError) throw refundError;
+                console.log(`❌ [${requestId}] Acesso bloqueado para: ${normalizedEmail}`);
+            } else {
+                console.log(`ℹ️ [${requestId}] Reembolso recebido para aluno inexistente: ${normalizedEmail}`);
+            }
+            return new Response(JSON.stringify({ status: 'success' }), { status: 200, headers });
+        }
         const fullName = clienteDados.full_name || clienteDados.name || 'Aluno';
         const firstName = clienteDados.first_name || fullName.split(' ')[0];
 
