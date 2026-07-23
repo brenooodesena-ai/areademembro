@@ -656,7 +656,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                             ? 'bg-gold-500/20 text-gold-500 border border-gold-400/30' 
                                                             : 'bg-white/10 text-white/60 border border-white/10'
                                                         }`}>
-                                                            {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
+                                                            {student.access_type === 'lifetime' ? 'Vitalício' : 'Anual'}
                                                         </span>
                                                         {student.access_type === 'annual' && student.expiry_at && (
                                                             <span className="text-[10px] text-white/30 italic">
@@ -1067,7 +1067,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                             </span>
                                                         )}
                                                         {student.email?.toLowerCase() === 'brenooodesena@gmail.com' ? (
-                                                            <span className="bg-gold-500/20 text-gold-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-gold-500/20 cursor-default" title="Acesso permanente — não pode ser alterado">✨ Vitalício</span>
+                                                            <span className="bg-gold-500/20 text-gold-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-gold-500/20 cursor-default" title="Acesso permanente — não pode ser alterado">Vitalício</span>
                                                         ) : (
                                                         <button 
                                                             onClick={async () => {
@@ -1085,7 +1085,7 @@ export function AdminDashboard({ bannerConfig, setBannerConfig, modules, setModu
                                                             }`}
                                                             title="Clique para alternar o tipo de acesso"
                                                         >
-                                                            {student.access_type === 'lifetime' ? '✨ Vitalício' : '📅 Anual'}
+                                                            {student.access_type === 'lifetime' ? 'Vitalício' : 'Anual'}
                                                         </button>
                                                         )}
                                                     </div>
